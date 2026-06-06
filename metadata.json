@@ -1,0 +1,6 @@
+{
+  "name": "Karma AI",
+  "description": "On-chain Web3 reputation explorer providing behavioral indices, holding streaks, dynamic charts, and AI-powered reputation readings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
