@@ -6,9 +6,10 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
   onClick?: () => void;
   id?: string;
+  className?: string;
 }
 
-export default function GlassCard({ children, style = {}, hover = false, onClick, id, ...rest }: GlassCardProps) {
+export default function GlassCard({ children, style = {}, hover = false, onClick, id, className = '', ...rest }: GlassCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -17,7 +18,7 @@ export default function GlassCard({ children, style = {}, hover = false, onClick
       onClick={onClick}
       onMouseEnter={() => hover && setIsHovered(true)}
       onMouseLeave={() => hover && setIsHovered(false)}
-      className="transition-all duration-300 relative overflow-hidden"
+      className={`transition-all duration-300 relative overflow-hidden ${className}`}
       {...rest}
       style={{
         background: 'rgba(12, 12, 26, 0.72)',

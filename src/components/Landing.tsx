@@ -85,7 +85,7 @@ export default function Landing({ onShowConnect }: LandingProps) {
     { icon: '◉', title: 'Archetype Model', desc: 'Let our on-chain engine classify your wallet into 8 distinct personality profiles based on holding longevity & trade spacing.' },
     { icon: '⬡', title: 'Aura System', desc: 'Advance through six custom aesthetic aura tiers. Elevate your presence from silent Initiate to glowing Ascendant.' },
     { icon: '⊕', title: 'Daily AI Readings', desc: 'Secure smart-profile readings customized to your stats. Receive objective on-chain wisdom powered by Gemini 3.5.' },
-    { icon: '⬟', title: 'Conviction Streaks', desc: 'Complete holds without token exits to establish conviction streaks, unlocking multipliers on global indexes.' },
+    { icon: '💳', title: 'Lending Synergy (Beta)', desc: 'Checking your score and claiming your username builds sovereign reputation karma. Elite profiles may qualify for uncollateralized loan offers from autonomous lenders who evaluate raw credit karma. (Please note that Karma AI does not directly issue debt or guarantee third-party loans).' },
     { icon: '⊛', title: 'Global Directory', desc: 'Compare your behavioral ranking globally. See how your patience matches other decentralized nodes.' },
   ];
 
@@ -93,7 +93,7 @@ export default function Landing({ onShowConnect }: LandingProps) {
     <div className="min-h-screen text-slate-100 flex flex-col justify-between overflow-x-hidden">
       
       {/* Hero Visual Space Section */}
-      <div className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16">
+      <div className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-24 pb-16">
         
         {/* Dynamic network vector background canvas */}
         <ParticleField />
@@ -106,13 +106,13 @@ export default function Landing({ onShowConnect }: LandingProps) {
         <div className="relative z-10 text-center max-w-[800px] mx-auto animate-fade-in flex flex-col items-center">
           
           {/* Top release tag */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8">
+          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8 max-w-full">
             <span className="w-1.5 h-1.5 rounded-full bg-[#a78bfa] inline-block animate-pulse" />
             <span 
-              className="text-[10px] uppercase font-mono tracking-widest text-[#a78bfa] font-bold"
-              style={{ letterSpacing: '0.18em' }}
+              className="text-[10px] uppercase font-mono tracking-widest text-[#a78bfa] font-bold text-center leading-none"
+              style={{ letterSpacing: '0.14em' }}
             >
-              Public Sandbox Active · Full Operations Go-Live August 2026
+              🔒 Active Live Beta & Sandbox Testing · Go-Live August 2026
             </span>
           </div>
 
@@ -127,16 +127,16 @@ export default function Landing({ onShowConnect }: LandingProps) {
             </span>
           </h1>
 
-          <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-lg mb-10 text-center">
+          <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-lg mb-8 text-center px-2">
             Blockchain networks log numbers, balances, and public addresses.<br />
             <strong className="text-slate-200">KARMA AI logs verifiable human behavior.</strong><br />
             Onboard in seconds, evaluate your karma score, and prove your on-chain conviction.
           </p>
 
-          <div className="flex flex-wrap gap-4 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10 w-full sm:w-auto px-4">
             <button
               onClick={onShowConnect}
-              className="px-8 py-4 rounded-xl border-none text-white font-extrabold text-sm transition-all shadow-[0_0_35px_rgba(167,139,250,0.3)] hover:shadow-[0_0_45px_rgba(167,139,250,0.5)] transform hover:-translate-y-0.5 cursor-pointer"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl border-none text-white font-extrabold text-sm transition-all shadow-[0_0_35px_rgba(167,139,250,0.3)] hover:shadow-[0_0_45px_rgba(167,139,250,0.5)] transform hover:-translate-y-0.5 cursor-pointer"
               style={{
                 background: 'linear-gradient(135deg, #a78bfa, #818cf8)',
                 fontFamily: "'Syne', sans-serif"
@@ -146,17 +146,35 @@ export default function Landing({ onShowConnect }: LandingProps) {
             </button>
             <button
               onClick={onShowConnect}
-              className="px-8 py-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-sm transition-all cursor-pointer"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-sm transition-all cursor-pointer"
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
               View Global Index
             </button>
           </div>
 
+          {/* App Store / Google Play badges */}
+          <div className="flex flex-wrap gap-3.5 justify-center items-center mb-16 select-none max-w-full px-2">
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-950/40 border border-white/[0.06] text-left transition-all hover:border-purple-500/30">
+              <span className="text-lg">🍏</span>
+              <div>
+                <div className="text-[7px] text-slate-500 font-mono uppercase tracking-widest leading-none">Coming soon on</div>
+                <div className="text-[11px] text-slate-100 font-extrabold font-sans leading-tight mt-0.5">App Store</div>
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-950/40 border border-white/[0.06] text-left transition-all hover:border-emerald-500/30">
+              <span className="text-lg">🤖</span>
+              <div>
+                <div className="text-[7px] text-slate-500 font-mono uppercase tracking-widest leading-none">Coming soon on</div>
+                <div className="text-[11px] text-slate-100 font-extrabold font-sans leading-tight mt-0.5">Google Play</div>
+              </div>
+            </div>
+          </div>
+
           {/* Multi-chain networks launch info */}
-          <div className="flex flex-col items-center gap-4 mb-10 w-full max-w-lg">
+          <div className="flex flex-col items-center gap-4 mb-10 w-full max-w-lg px-4">
             <div 
-              className="text-[9px] font-mono uppercase tracking-widest text-slate-500"
+              className="text-[9px] font-mono uppercase tracking-widest text-slate-500 text-center"
               style={{ letterSpacing: '0.16em' }}
             >
               SUPPORTS METAMASK · COINBASE · RABBY · TRUST · WALLETCONNECT · RAINBOW
