@@ -18,6 +18,10 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
   const aura = getAura(user.karmaScore);
   const personality = PERSONALITIES[user.personality || 'Visionary'] || PERSONALITIES.Visionary;
 
+  // Calculate dynamic global rank percent based on standard score formula
+  const rankPercent = ((850 - user.karmaScore) / 550 * 9.8 + 0.2).toFixed(2);
+  const rank = `Top ${rankPercent}%`;
+
   // Clear share status after 3 seconds
   useEffect(() => {
     if (shareStatus) {
@@ -36,6 +40,7 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
 ━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 Identity: @${user.username}
 🔮 Archetype: ${personality.name} ${personality.icon}
+🌎 Global Rank: ${rank}
 🔥 Holding Streak: ${user.streak} Days 🔥
 📊 Reputation Score: ${user.karmaScore}/850 [${aura.name} ${aura.badge}]
 
@@ -219,18 +224,23 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
 
       // Central Score characters
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 36px sans-serif';
+      ctx.font = 'bold 34px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(user.karmaScore.toString(), width / 2, scoreY + 4);
+      ctx.fillText(user.karmaScore.toString(), width / 2, scoreY - 4);
 
       ctx.fillStyle = '#64748b';
-      ctx.font = '10px monospace';
-      ctx.fillText('REPUTATION', width / 2, scoreY - 26);
+      ctx.font = '8px monospace';
+      ctx.fillText('SCORE', width / 2, scoreY - 26);
 
-      ctx.fillStyle = aura.color;
-      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#14F195';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(rank, width / 2, scoreY + 22);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.font = '7px sans-serif';
       ctx.letterSpacing = '1px';
-      ctx.fillText('QUOTIENT', width / 2, scoreY + 22);
+      ctx.fillText('GLOBAL RANK', width / 2, scoreY + 34);
+      ctx.letterSpacing = '0px'; // Reset letter spacing for subsequent draws
 
       // Badge name under the metric circle
       ctx.fillStyle = '#f8fafc';
@@ -462,24 +472,34 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
             </div>
 
             {/* Middle statistics items */}
-            <div className="grid grid-cols-2 gap-4 py-4 border-b border-white/[0.04]">
+            <div className="grid grid-cols-3 gap-2.5 py-4 border-b border-white/[0.04]">
               <div>
-                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest block">Reputation quotient</span>
-                <span className="text-lg font-black text-slate-200 mt-1 flex items-center gap-1">
-                  <span style={{ color: aura.color }}>✧</span> {user.karmaScore} <span className="text-[10px] text-slate-500">/ 100</span>
+                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest block font-bold">Reputation</span>
+                <span className="text-sm sm:text-base font-black text-slate-200 mt-1 flex items-center gap-1">
+                  <span style={{ color: aura.color }}>✧</span> {user.karmaScore}
                 </span>
-                <span className="text-[10px] font-mono block mt-0.5 uppercase tracking-wide" style={{ color: aura.color }}>
+                <span className="text-[9px] font-mono block mt-0.5 uppercase tracking-wide truncate" style={{ color: aura.color }} title={aura.name}>
                   {aura.name}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest block font-bold">Global Rank</span>
+                <span className="text-sm sm:text-base font-black text-[#14F195] mt-1 block font-mono">
+                  {rank}
+                </span>
+                <span className="text-[8.5px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide truncate">
+                  Live Ledger
                 </span>
               </div>
               
               <div>
-                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest block">Holding Streak</span>
-                <span className="text-lg font-black text-amber-500 mt-1 block">
-                  🔥 {user.streak} Days
+                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest block font-bold">Streak</span>
+                <span className="text-sm sm:text-base font-black text-amber-500 mt-1 block">
+                  🔥 {user.streak}D
                 </span>
-                <span className="text-[9px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide">
-                  {personality.icon} {personality.name}
+                <span className="text-[8.5px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide truncate" title={personality.name}>
+                  {personality.name}
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import GlassCard from './GlassCard';
 import KarmaLogo from './KarmaLogo';
 import { useLanguage } from '../context/LanguageContext';
+import ScoreChecker from './ScoreChecker';
 
 interface LandingProps {
   onShowConnect: () => void;
@@ -418,6 +419,11 @@ export default function Landing({ onShowConnect }: LandingProps) {
           </div>
         )}
 
+      </div>
+
+      {/* VIRAL SCORE CHECK PANEL AND NARRATIVE */}
+      <div className="border-t border-b border-white/[0.04] bg-[#05050b]/40 py-12">
+        <ScoreChecker />
       </div>
 
       {/* FAMILIAR COMPARISON: FICO vs. Karma reputability translation table */}
