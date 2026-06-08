@@ -44,55 +44,75 @@ function Nav({ page, setPage, user, onShowConnect, onShowDisconnect, onShowEdit 
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-16 px-3 sm:px-6 flex items-center justify-between border-b border-white/[0.05] bg-[#06060c]/80 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 px-3 sm:px-6 flex items-center justify-between border-b border-white/[0.04] bg-[#05050a]/85 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
+      {/* Dynamic horizontal glow accent divider */}
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500/25 via-emerald-500/30 via-cyan-500/25 to-transparent pointer-events-none" />
+      
       {/* Brand Identity logo */}
       <button 
         onClick={() => setPage('Home')} 
-        className="flex items-center gap-1.5 sm:gap-2 border-none bg-transparent cursor-pointer outline-none font-extrabold shrink-0"
+        className="flex items-center gap-2 border-none bg-transparent cursor-pointer outline-none font-black shrink-0 relative group"
       >
-        <KarmaLogo size={32} className="shrink-0 animate-pulse-slow" />
+        <div className="relative">
+          <div className="absolute inset-0 bg-[#a78bfa]/15 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+          <KarmaLogo size={34} className="shrink-0 animate-pulse-slow relative z-10" />
+        </div>
         <span 
-          className="text-[#f8fafc] tracking-tight font-extrabold text-sm hidden xs:inline"
-          style={{ fontFamily: "'Syne', sans-serif" }}
+          className="text-white tracking-tight font-extrabold text-sm hidden xs:inline uppercase"
+          style={{ fontFamily: "'Syne', sans-serif", letterSpacing: '0.05em' }}
         >
-          KARMA <span className="text-[#a78bfa]">AI</span>
+          KARMA <span className="bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent font-black">AI</span>
         </span>
       </button>
 
       {/* Tabs */}
-      <div className="flex gap-1 sm:gap-1.5 bg-slate-950/40 p-1 rounded-xl border border-white/[0.03] overflow-x-auto scrollbar-none max-w-[32vw] xs:max-w-[45vw] sm:max-w-none">
-        {tabs.filter(t => t.id === 'Home' || t.id === 'Leaderboard' || connected).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setPage(tab.id)}
-            className="px-2 sm:px-3.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold cursor-pointer transition-all border-none whitespace-nowrap"
-            style={{
-              backgroundColor: page === tab.id ? 'rgba(167, 139, 250, 0.12)' : 'transparent',
-              color: page === tab.id ? '#c084fc' : 'rgba(248, 250, 252, 0.45)',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex gap-1 bg-slate-900/60 p-1.5 rounded-xl border border-white/[0.04] overflow-x-auto scrollbar-none max-w-[32vw] xs:max-w-[45vw] sm:max-w-none">
+        {tabs.filter(t => t.id === 'Home' || t.id === 'Leaderboard' || connected).map(tab => {
+          const isActive = page === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setPage(tab.id)}
+              className="px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold cursor-pointer transition-all border-none whitespace-nowrap uppercase tracking-wider font-sans select-none"
+              style={{
+                background: isActive ? 'linear-gradient(135deg, rgba(167, 139, 250, 0.15) 0%, rgba(129, 140, 248, 0.15) 100%)' : 'transparent',
+                color: isActive ? '#d8b4fe' : 'rgba(241, 245, 249, 0.5)',
+                border: isActive ? '1px solid rgba(167, 139, 250, 0.25)' : '1px solid transparent',
+                textShadow: isActive ? '0 0 8px rgba(167, 139, 250, 0.2)' : 'none',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Profile details / Language switcher trigger group */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 relative z-10">
         <LanguageSwitcher />
 
         {connected && user ? (
-          <div className="flex items-center gap-1.5 sm:gap-3 bg-white/[0.02] border border-white/[0.06] rounded-xl pl-2 sm:pl-3.5 pr-1.5 sm:pr-2 py-1 sm:py-1.5 animate-fade-in relative group">
+          <div className="flex items-center gap-1.5 sm:gap-3 bg-white/[0.02] border border-white/[0.06] rounded-xl pl-2 sm:pl-3.5 pr-1.5 sm:pr-2 py-1 sm:py-1.5 animate-fade-in relative group hover:border-[#14F195]/20 hover:bg-white/[0.04] transition-all">
+            
+            {/* Green active status indicator */}
+            <div className="absolute -top-1 -left-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#14F195]/70 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#14F195]"></span>
+            </div>
+
             <div className="text-left select-none max-w-[120px] md:inline hidden">
-              <div className="text-xs font-bold text-slate-200 truncate">@{user.username}</div>
+              <div className="text-xs font-extrabold text-slate-200 truncate flex items-center gap-1">
+                @{user.username}
+              </div>
               <div className="text-[9px] font-mono text-slate-500 truncate mt-0.5" title={user.hideWallet ? `@${user.username}` : user.address}>
-                {user.hideWallet ? `@${user.username}` : (user.address.length > 12 ? user.address.slice(0, 6) + '...' + user.address.slice(-4) : user.address)}
+                {user.hideWallet ? 'SANDBOX SECURE' : (user.address.length > 12 ? user.address.slice(0, 6) + '...' + user.address.slice(-4) : user.address)}
               </div>
             </div>
 
             {/* Avatar block with quick edit / sign out controls */}
             <button
               onClick={onShowEdit}
-              className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center font-extrabold text-slate-100 text-xs cursor-pointer border-none transition-transform hover:scale-105"
+              className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#9945FF] to-[#14F195] flex items-center justify-center font-black text-slate-950 text-xs cursor-pointer border-none transition-all hover:scale-105 shadow"
             >
               {user.username[0].toUpperCase()}
             </button>
@@ -100,7 +120,7 @@ function Nav({ page, setPage, user, onShowConnect, onShowDisconnect, onShowEdit 
             {/* Sign Out Trigger pin */}
             <button
               onClick={onShowDisconnect}
-              className="px-2 py-1 border-none bg-transparent hover:text-rose-400 text-slate-500 transition-colors text-xs cursor-pointer ml-1"
+              className="px-1.5 py-1 border-none bg-transparent hover:text-rose-400 text-slate-500 transition-colors text-xs cursor-pointer ml-0.5"
               title="Sign Out Reputation Workspace"
             >
               ⏻
@@ -109,9 +129,9 @@ function Nav({ page, setPage, user, onShowConnect, onShowDisconnect, onShowEdit 
         ) : (
           <button
             onClick={onShowConnect}
-            className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl border-none text-white font-extrabold text-[11px] sm:text-xs transition-transform hover:scale-103 cursor-pointer select-none whitespace-nowrap"
+            className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl border-none text-slate-950 font-black text-[10px] sm:text-xs transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer select-none whitespace-nowrap uppercase tracking-wider shadow-[0_0_20px_rgba(167,139,250,0.15)] hover:shadow-[0_0_25px_rgba(167,139,250,0.35)]"
             style={{
-              background: 'linear-gradient(135deg, #a78bfa, #818cf8)',
+              background: 'linear-gradient(135deg, #14F195, #a78bfa)',
               fontFamily: "'Syne', sans-serif"
             }}
           >

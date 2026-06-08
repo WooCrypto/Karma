@@ -98,25 +98,25 @@ export default function WhitepaperModal({ onClose }: WhitepaperModalProps) {
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
         {/* Modal Header */}
-        <div className="p-6 border-b border-white/[0.06] flex items-center justify-between relative z-10 bg-[#07070d]">
+        <div className="p-5 md:p-6 border-b border-white/[0.06] flex flex-col md:flex-row gap-4 items-start md:items-center justify-between relative z-10 bg-[#07070d]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#14F195]/10 border border-[#14F195]/20 flex items-center justify-center text-[#14F195]">
+            <div className="w-10 h-10 rounded-xl bg-[#14F195]/10 border border-[#14F195]/20 flex items-center justify-center text-[#14F195] shrink-0">
               <BookOpen className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2" style={{ fontFamily: "'Syne', sans-serif" }}>
+              <h2 className="text-lg md:text-xl font-bold tracking-tight text-white flex flex-wrap items-center gap-2" style={{ fontFamily: "'Syne', sans-serif" }}>
                 <span>KARMA PROTOCOL</span>
-                <span className="text-xs bg-[#14F195]/10 text-[#14F195] px-2 py-0.5 rounded-full font-mono font-medium tracking-normal border border-[#14F195]/20">
+                <span className="text-[10px] bg-[#14F195]/10 text-[#14F195] px-2 py-0.5 rounded-full font-mono font-medium tracking-normal border border-[#14F195]/20 block">
                   Whitepaper & Roadmap
                 </span>
               </h2>
-              <p className="text-[11px] font-mono text-slate-400">VERSION 1.4 · SOVEREIGN TRUST MATRIX</p>
+              <p className="text-[10px] md:text-[11px] font-mono text-slate-400">VERSION 1.4 · SOVEREIGN TRUST MATRIX</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 w-full md:w-auto pt-2 md:pt-0 border-t border-white/[0.04] md:border-none">
             {/* Quick Toggle Sections */}
-            <div className="flex bg-slate-950 p-1 rounded-xl border border-white/[0.05] mr-2">
+            <div className="flex bg-slate-950 p-1 rounded-xl border border-white/[0.05]">
               <button
                 onClick={() => setActiveSection('paper')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
@@ -141,7 +141,7 @@ export default function WhitepaperModal({ onClose }: WhitepaperModalProps) {
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl border border-white/[0.05] hover:border-white/10 text-slate-400 hover:text-white transition-all bg-slate-950/40 cursor-pointer"
+              className="p-2 rounded-xl border border-white/[0.05] hover:border-white/10 text-slate-400 hover:text-white transition-all bg-slate-950/40 cursor-pointer ml-auto md:ml-0"
               title="Close Panel"
             >
               <X className="w-4 h-4" />
@@ -266,6 +266,31 @@ export default function WhitepaperModal({ onClose }: WhitepaperModalProps) {
                     <span className="text-[11px] text-slate-400">Holders of Karma NFT artifacts earn passive score speed extensions to recover slashed reputation.</span>
                   </li>
                 </ul>
+              </div>
+
+              {/* Section 4: Dynamic Lender Option */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#14F195]" />
+                  <h3 className="text-sm font-bold font-mono text-white uppercase tracking-wider">
+                    IV. Underwriters & Dynamic Credit Pools (Lender Mechanics)
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  The protocol deploys a <strong className="text-white">Dynamic Underwrite Matching Router</strong> to map borrowers with institutional capital pools:
+                </p>
+                <div className="p-4 rounded-xl bg-[#0b0b13] border border-purple-500/10 space-y-3 text-xs text-slate-300">
+                  <div className="flex items-center gap-2 text-[#a78bfa] font-mono font-bold uppercase text-[10.5px]">
+                    📊 ALGORITHMIC APR REDUCTION LOOP
+                  </div>
+                  <p className="leading-relaxed">
+                    Underwriters deposit USDC/USDT stablecoins in segregated risk pools. Rather than checking personal income indices, the protocol intercepts active scoring variables. 
+                    Every 10-point rise in a user's <strong className="text-[#14F195]">Karma Reputation Score</strong> reduces base borrow rates by <span className="text-[#14F195] font-mono font-bold">12-15 basis points</span>, scaling down towards a record-low prime APR of <strong className="text-emerald-400">1.8%</strong>.
+                  </p>
+                  <p className="leading-relaxed">
+                    If an account's score drops beneath underwriter-specified thresholds (e.g. 630 points), the corresponding credit vault locks access automatically, enforcing capital preservation without traditional bank blockades.
+                  </p>
+                </div>
               </div>
 
               {/* Disclaimer */}

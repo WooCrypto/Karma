@@ -493,6 +493,98 @@ export default function Landing({ onShowConnect }: LandingProps) {
         </div>
       </div>
 
+      {/* ADVERTISE SOVEREIGN LENDERS */}
+      <div className="max-w-[1080px] mx-auto px-6 py-12 border-t border-white/[0.04] relative z-10">
+        <div className="text-center mb-10">
+          <span className="text-[9.5px] uppercase font-mono tracking-widest text-[#a78bfa] bg-purple-500/10 px-3 py-1 rounded-full font-bold">
+            ⚡ PRE-QUALIFICATION ROADMAP
+          </span>
+          <h2 
+            className="text-2xl md:text-3xl font-extrabold text-[#f8fafc] tracking-tight mt-3 mb-2"
+            style={{ fontFamily: "'Syne', sans-serif" }}
+          >
+            Sovereign Lending Pools
+          </h2>
+          <p className="text-slate-400 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed">
+            These prospective underwriter vaults ingest your secure Karma reputation score to deploy on-demand liquid credit. Higher scores dynamically unlock massive rate discounts.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+          {[
+            {
+              name: 'KARMALend Pool',
+              baseApr: '8.50%',
+              minScore: '630 PTS',
+              backer: '◈ Direct Vault',
+              desc: 'Our native liquid pool backing active Web3 builders with low barriers.',
+              colorBorder: 'group-hover:border-purple-500/30',
+              bullet: 'text-purple-400'
+            },
+            {
+              name: 'Aave v4 VIP Desk',
+              baseApr: '11.20%',
+              minScore: '712 PTS',
+              backer: '◆ Institution Direct',
+              desc: 'High-volume prime client desk targeting seasoned DeFi strategists.',
+              colorBorder: 'group-hover:border-cyan-500/30',
+              bullet: 'text-cyan-400'
+            },
+            {
+              name: 'Celestia Credit Vault',
+              baseApr: '9.80%',
+              minScore: '674 PTS',
+              backer: '⊕ Liquid Consensus',
+              desc: 'Modular collateral matching optimized for consensus nodes & stakers.',
+              colorBorder: 'group-hover:border-emerald-500/30',
+              bullet: 'text-emerald-400'
+            },
+            {
+              name: 'Arbitrum Trust Grant',
+              baseApr: '7.20%',
+              minScore: '751 PTS',
+              backer: '⬡ DAO Underwrite',
+              desc: 'Ultra competitive rates backed by DAO-staked reputation grants.',
+              colorBorder: 'group-hover:border-amber-500/30',
+              bullet: 'text-amber-400'
+            }
+          ].map((partner, pidx) => (
+            <div
+              key={pidx}
+              onClick={onShowConnect}
+              className="p-5 rounded-2xl bg-gradient-to-b from-[#07070d] to-slate-950 border border-white/[0.04] transition-all hover:-translate-y-1 hover:bg-[#090911] cursor-pointer group"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{partner.backer}</span>
+                <span className="text-xs text-[#14F195] font-bold font-mono">Active</span>
+              </div>
+              
+              <h4 
+                className="text-sm font-extrabold text-white group-hover:text-[#14F195] transition-colors mb-2"
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
+                {partner.name}
+              </h4>
+
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-4 min-h-[50px]">
+                {partner.desc}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.03] text-[10px] font-mono text-slate-400">
+                <div>
+                  <span className="block text-[8px] text-slate-500 uppercase">Min Rating</span>
+                  <span className="font-bold text-slate-300">{partner.minScore}</span>
+                </div>
+                <div className="text-right">
+                  <span className="block text-[8px] text-slate-500 uppercase">Base Rate</span>
+                  <span className="font-bold text-[#14F195]">{partner.baseApr}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* CTA Footer section */}
       <div className="py-24 px-6 text-center bg-slate-950/30 border-t border-white/[0.03]">
         <div className="text-[10px] font-mono uppercase tracking-widest text-[#a78bfa] font-bold mb-2">The New Standard for Web3 Identity</div>
