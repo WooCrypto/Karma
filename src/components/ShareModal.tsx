@@ -37,7 +37,7 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
 👤 Identity: @${user.username}
 🔮 Archetype: ${personality.name} ${personality.icon}
 🔥 Holding Streak: ${user.streak} Days 🔥
-📊 Reputation Score: ${user.karmaScore}/100 [${aura.name} ${aura.badge}]
+📊 Reputation Score: ${user.karmaScore}/850 [${aura.name} ${aura.badge}]
 
 🎨 Pillars Bio:
 ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█'.repeat(Math.round(c.value / 12)).padEnd(8, '░')}]`).join('\n')}
@@ -207,12 +207,13 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
       ctx.arc(width / 2, scoreY, 65, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Score perimeter fill ring based on reputation percentage
+      // Score perimeter fill ring based on reputation percentage (300 to 850 range)
       ctx.strokeStyle = aura.color;
       ctx.lineWidth = 8;
       ctx.beginPath();
-      // start at -Math.PI/2 (top) and map 0..100 onto 0..2PI
-      const endAngle = -Math.PI / 2 + (user.karmaScore / 100) * Math.PI * 2;
+      // start at -Math.PI/2 (top) and map 300..850 onto 0..2PI
+      const basePercentage = Math.max(0, Math.min(1, (user.karmaScore - 300) / 550));
+      const endAngle = -Math.PI / 2 + basePercentage * Math.PI * 2;
       ctx.arc(width / 2, scoreY, 65, -Math.PI / 2, endAngle, false);
       ctx.stroke();
 

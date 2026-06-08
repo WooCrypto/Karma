@@ -8,28 +8,57 @@ interface KarmaRingProps {
 }
 
 export default function KarmaRing({ score, aura, size = 180 }: KarmaRingProps) {
-  const [val, setVal] = useState(0);
+  const [val, setVal] = useState(300);
+  const [isAnimating, setIsAnimating] = useState(false);
   const strokeWidth = 10;
   const radius = size / 2 - strokeWidth - 6;
   const circumference = 2 * Math.PI * radius;
-  const targetOffset = circumference - (score / 100) * circumference;
+  
+  // Calculate percentage within the 300 - 850 range
+  const percentage = Math.max(0, Math.min(1, (score - 300) / 550));
+  const targetOffset = circumference - percentage * circumference;
 
   useEffect(() => {
-    // Animate the numeric score
-    let startVal = 0;
-    const duration = 1200; // ms
-    const step = score / (duration / 16);
-    const id = setInterval(() => {
-      startVal += step;
-      if (startVal >= score) {
-        setVal(score);
-        clearInterval(id);
-      } else {
-        setVal(Math.floor(startVal));
-      }
-    }, 16);
+    // Ultra-smooth easeOutExpo mathematical easing function
+    const easeOutExpo = (t: number) => {
+      return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    };
 
-    return () => clearInterval(id);
+    setIsAnimating(false);
+    
+    // Tiny delay to ensure classes trigger entrance keyframes correctly
+    const resetTimer = setTimeout(() => {
+      setIsAnimating(true);
+    }, 50);
+
+    const startVal = 300;
+    const endVal = score;
+    const duration = 1600; // 1.6s
+    const startTime = performance.now();
+
+    let animationFrameId: number;
+
+    const updateScore = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeOutExpo(progress);
+      
+      const currentVal = Math.floor(startVal + (endVal - startVal) * easedProgress);
+      setVal(currentVal);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(updateScore);
+      } else {
+        setVal(endVal);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(updateScore);
+
+    return () => {
+      clearTimeout(resetTimer);
+      cancelAnimationFrame(animationFrameId);
+    };
   }, [score]);
 
   return (
@@ -71,17 +100,29 @@ export default function KarmaRing({ score, aura, size = 180 }: KarmaRingProps) {
         />
       </svg>
 
-      {/* Internal Value Text Overlay */}
+      {/* Internal Value Text Overlay with elegant css transition helper */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <span 
-          className="text-white text-5xl font-extrabold tracking-tight select-none"
-          style={{ fontFamily: "'Syne', sans-serif" }}
+          className="text-white text-5xl font-extrabold tracking-tight select-none transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{ 
+            fontFamily: "'Syne', sans-serif",
+            transform: isAnimating ? 'scale(1)' : 'scale(0.75)',
+            opacity: isAnimating ? 1 : 0,
+            textShadow: isAnimating 
+              ? `0 0 20px ${aura.color}bf, 0 0 10px ${aura.color}45` 
+              : `0 0 0px ${aura.color}00`
+          }}
         >
           {val}
         </span>
         <span 
-          className="text-xs uppercase tracking-widest font-mono mt-1 text-slate-400"
-          style={{ letterSpacing: '0.2em' }}
+          className="text-xs uppercase tracking-widest font-mono mt-1 text-slate-400 transition-all duration-700 ease-out"
+          style={{ 
+            letterSpacing: '0.2em',
+            transform: isAnimating ? 'translateY(0)' : 'translateY(6px)',
+            opacity: isAnimating ? 1 : 0,
+            transitionDelay: '300ms'
+          }}
         >
           Karma
         </span>

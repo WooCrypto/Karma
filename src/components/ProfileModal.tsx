@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Wallet } from '../types';
 import { WALLETS } from '../constants';
 import GlassCard from './GlassCard';
+import { ShieldCheck, Cpu, Database, Activity, Landmark } from 'lucide-react';
 
 interface ConnectModalProps {
   onConnect: (data: { wallet: Wallet; username: string; hideWallet: boolean; address: string }) => void;
@@ -15,6 +16,56 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
   const [hideWallet, setHideWallet] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [savedProfile, setSavedProfile] = useState<any | null>(null);
+
+  // Connection options state: auto web3, manual paste, sandbox template
+  const [connectMethod, setConnectMethod] = useState<'auto' | 'manual' | 'sandbox'>('auto');
+  const [manualAddress, setManualAddress] = useState('');
+  const [manualAddressError, setManualAddressError] = useState('');
+
+  // Scanning simulation state variables
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanStage, setScanStage] = useState(0);
+
+  const scanStages = [
+    { title: "Resolving On-Chain RPCs", desc: "Handshaking with decentralized Ethereum gateway nodes...", icon: <Cpu className="w-5 h-5 text-indigo-400" /> },
+    { title: "Retrieving Transaction History", desc: "Indexed 147 historic block epochs for this public keyset...", icon: <Database className="w-5 h-5 text-purple-400" /> },
+    { title: "Evaluating Asset Hold-Times", desc: "Averaging streak fidelity and multi-chain liquidity holding intervals...", icon: <Activity className="w-5 h-5 text-pink-400" /> },
+    { title: "Calibrating Behavior Persona", desc: "Analyzing gas optimization strategies and smart contract voting history...", icon: <Landmark className="w-5 h-5 text-emerald-400" /> },
+    { title: "Compiling Final Karma Rank", desc: "Success! Building cryptographic credit reputation ledger...", icon: <ShieldCheck className="w-5 h-5 text-amber-500 animate-bounce" /> },
+  ];
+
+  useEffect(() => {
+    let interval: any;
+    let stageInterval: any;
+    if (step === 'connecting') {
+      setScanProgress(0);
+      setScanStage(0);
+      
+      interval = setInterval(() => {
+        setScanProgress(p => {
+          if (p >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return p + 2;
+        });
+      }, 76);
+
+      stageInterval = setInterval(() => {
+        setScanStage(s => {
+          if (s >= scanStages.length - 1) {
+            clearInterval(stageInterval);
+            return scanStages.length - 1;
+          }
+          return s + 1;
+        });
+      }, 820);
+    }
+    return () => {
+      clearInterval(interval);
+      clearInterval(stageInterval);
+    };
+  }, [step]);
 
   function handlePickWallet(wallet: Wallet) {
     setSelectedWallet(wallet);
@@ -54,26 +105,46 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
     }
 
     setUsernameError('');
-    setStep('connecting');
-
     let resolvedAddress = '';
 
-    // Attempt real cryptographic web3 connection if available in the browser environment
-    if (typeof window !== 'undefined' && (window as any).ethereum) {
-      try {
-        const provider = (window as any).ethereum;
-        // Request accounts
-        const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        if (accounts && accounts[0]) {
-          resolvedAddress = accounts[0];
-        }
-      } catch (err) {
-        console.warn('Real wallet login attempted but was either rejected or unavailable in sandbox environment:', err);
+    if (connectMethod === 'manual') {
+      const cleanAddr = manualAddress.trim();
+      if (!cleanAddr) {
+        setManualAddressError('Please enter an address or .eth name.');
+        return;
       }
-    }
+      
+      const isEthHex = /^0x[a-fA-F0-9]{40}$/.test(cleanAddr);
+      const isEns = cleanAddr.toLowerCase().endsWith('.eth') && cleanAddr.length > 4;
 
-    // Fallback to high-fidelity simulated production address if not populated
-    if (!resolvedAddress) {
+      if (!isEthHex && !isEns) {
+        setManualAddressError('Please enter a valid 42-character Ethereum hex address starting with "0x", or a ".eth" extension.');
+        return;
+      }
+      setManualAddressError('');
+      resolvedAddress = cleanAddr;
+    } else if (connectMethod === 'auto') {
+      // Attempt real cryptographic web3 connection if available in the browser environment
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        try {
+          const provider = (window as any).ethereum;
+          const accounts = await provider.request({ method: 'eth_requestAccounts' });
+          if (accounts && accounts[0]) {
+            resolvedAddress = accounts[0];
+          }
+        } catch (err: any) {
+          console.warn('Real wallet login attempted but was rejected or unavailable in sandbox environment:', err);
+          setManualAddressError(err?.message || 'Connection rejected by browser extension. Please authorize standard access.');
+          return;
+        }
+      }
+      
+      if (!resolvedAddress) {
+        setManualAddressError('No active Web3 extensions (MetaMask/Rabby etc.) found in browser context. Please select "✍️ Custom Address" instead.');
+        return;
+      }
+    } else {
+      // Sandbox Mode: Fallback to high-fidelity simulated production address
       const hexChars = '0123456789abcdef';
       let hexPart = '';
       for (let i = 0; i < 36; i++) {
@@ -81,6 +152,8 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
       }
       resolvedAddress = '0x' + hexPart; // produces a real formatted 42-character hex string
     }
+
+    setStep('connecting');
 
     // Keep the immersive loading experience for authentication parity
     setTimeout(() => {
@@ -92,19 +165,20 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           address: resolvedAddress,
         });
       }
-    }, 1500);
+    }, 4200);
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-fade-in">
+    <div className="fixed inset-0 z-[200] overflow-y-auto animate-fade-in" id="wallet-modal-overlay">
       {/* Dimmed static backdrop */}
       <div 
         onClick={step !== 'connecting' ? onClose : undefined} 
-        className="absolute inset-0 bg-slate-950/85 backdrop-blur-md transition-opacity" 
+        className="fixed inset-0 bg-slate-950/85 backdrop-blur-md transition-opacity" 
       />
 
-      <div className="relative w-full max-w-[450px] transform transition-all" style={{ animation: 'fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-        <GlassCard style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+        <div className="relative w-full max-w-[450px] transform transition-all" style={{ animation: 'fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+          <GlassCard style={{ padding: 0, overflow: 'hidden' }}>
           
           {/* Top Title deck */}
           <div className="p-8 pb-5 flex items-start justify-between">
@@ -174,6 +248,36 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                 </button>
               </div>
 
+              {/* Verify Method Tab Deck */}
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1.5 block font-bold">
+                  Credentials Source
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-slate-950/60 p-1 rounded-xl border border-white/[0.05]">
+                  {[
+                    { id: 'auto', label: '🔌 Web3 Check' },
+                    { id: 'manual', label: '✍️ Custom Key' },
+                    { id: 'sandbox', label: '🎲 Sandbox ID' },
+                  ].map(method => (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => {
+                        setConnectMethod(method.id as any);
+                        setManualAddressError('');
+                      }}
+                      className="py-2.5 rounded-lg text-[10px] font-bold font-sans cursor-pointer transition-all border-none focus:outline-none"
+                      style={{
+                        backgroundColor: connectMethod === method.id ? 'rgba(167, 139, 250, 0.12)' : 'transparent',
+                        color: connectMethod === method.id ? '#c084fc' : 'rgba(248, 250, 252, 0.45)',
+                      }}
+                    >
+                      {method.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Username Input Container */}
               <div>
                 <label className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 block">
@@ -201,6 +305,65 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                   Lowercase ASCII letters, digests, and underscores only. Length: 3-20 characters.
                 </p>
               </div>
+
+              {/* Connection Source Sub-Views */}
+              {connectMethod === 'manual' && (
+                <div className="space-y-2 animate-fade-in text-left">
+                  <label className="text-[10px] font-mono uppercase tracking-widest text-slate-400 block font-bold">
+                    Ethereum Public Address or ENS <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={manualAddress}
+                    onChange={e => { setManualAddress(e.target.value); setManualAddressError(''); }}
+                    placeholder="0x71C7...976F or vitalik.eth"
+                    className="w-full px-4 py-3 rounded-xl border bg-white/[0.03] text-slate-100 text-xs font-mono outline-none transition-all focus:bg-white/[0.05]"
+                    style={{
+                      borderColor: manualAddressError ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.08)',
+                    }}
+                  />
+                  {manualAddressError && (
+                    <p className="text-rose-400 text-[11px] mt-1 font-sans">{manualAddressError}</p>
+                  )}
+                  <p className="text-[9px] text-slate-500 font-mono leading-relaxed">
+                    Provide any public read-only key to analyze. Your scores, streak calendars, and archetypes will compute deterministically relative to this ledger! No private key or signatures requested.
+                  </p>
+                </div>
+              )}
+
+              {connectMethod === 'auto' && (
+                <div className="p-3.5 rounded-xl bg-purple-500/5 border border-[#a78bfa]/10 space-y-1.5 animate-fade-in text-xs text-slate-300 text-left">
+                  <div className="font-bold flex items-center gap-1.5 text-purple-300">
+                    <span>🔌</span> Crypto Browser Check
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed font-sans">
+                    Detecting active browser wallet environments. Click the scan trigger to retrieve your public key securely.
+                  </p>
+                  {typeof window !== 'undefined' && !(window as any).ethereum ? (
+                    <div className="text-[10px] text-amber-400 bg-amber-500/15 border border-amber-500/20 px-2.5 py-1.5 rounded-lg leading-relaxed font-mono">
+                      ⚠️ No Web3 browser extension detected in this frame. Open the page in a new window or switch tabs to "✍️ Custom Key" to scan any address manually!
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg font-mono">
+                      ✨ Active browser extension check holds success. Handshake ready!
+                    </div>
+                  )}
+                  {manualAddressError && (
+                    <p className="text-rose-400 text-[11px] mt-1.5 font-sans font-bold">{manualAddressError}</p>
+                  )}
+                </div>
+              )}
+
+              {connectMethod === 'sandbox' && (
+                <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/15 space-y-1 animate-fade-in text-xs text-slate-400 text-left">
+                  <div className="font-bold flex items-center gap-1.5 text-emerald-300 mb-1">
+                    <span>🎲</span> Infinite Sandbox Demo ID
+                  </div>
+                  <p className="text-[10px] leading-relaxed font-sans">
+                    Generate an instant testbed identity. Instantly unlock beautiful stats maps, comprehensive holding records, and live AI reading reports. Perfect for quick preview of client features!
+                  </p>
+                </div>
+              )}
 
               {/* Privacy Setting Toggle */}
               <div className="p-4 rounded-xl bg-white/[0.015] border border-white/[0.05] flex items-center justify-between gap-4">
@@ -289,7 +452,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                         hideWallet: savedProfile.hideWallet,
                         address: savedProfile.address,
                       });
-                    }, 1200);
+                    }, 4200);
                   }}
                   className="w-full py-4 rounded-xl border-none text-white font-extrabold text-sm transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
                   style={{
@@ -324,34 +487,104 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
 
           {/* Connecting Handshake Simulation */}
           {step === 'connecting' && selectedWallet && (
-            <div className="p-10 text-center flex flex-col items-center">
-              <div 
-                className="w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-6 relative"
-                style={{
-                  background: `${selectedWallet.color}15`,
-                  border: `2px solid ${selectedWallet.color}45`,
-                }}
-              >
-                <span className="animate-spin duration-[3000ms] absolute inset-0 rounded-full border-2 border-transparent border-t-purple-500 pointer-events-none" />
-                {selectedWallet.icon}
-              </div>
-              <h4 className="font-extrabold text-slate-100 text-lg" style={{ fontFamily: "'Syne', sans-serif" }}>
-                Verifying Credentials
-              </h4>
-              <p className="text-slate-400 text-xs mt-1.5 max-w-xs leading-relaxed">
-                Compiles gas optimization scores, counting transaction epochs, and evaluating asset hold intervals...
-              </p>
+            <div className="p-8 pb-10 text-center flex flex-col items-center space-y-6" id="holographic-reputation-scanner">
+              
+              {/* Radar scanner visual container */}
+              <div className="relative w-28 h-28 flex items-center justify-center">
+                {/* Simulated outer radar radar loops */}
+                <div className="absolute inset-0 rounded-full border border-purple-500/10 animate-pulse" />
+                <div className="absolute inset-2 rounded-full border border-purple-500/20 animate-ping [animation-duration:3s]" />
+                <div className="absolute inset-4 rounded-full border border-indigo-400/20 animate-spin [animation-duration:12s] border-dashed" />
+                <div className="absolute inset-6 rounded-full border border-indigo-400/10" />
 
-              {/* Flashing status track */}
-              <div className="mt-8 flex gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:-0.3s]" />
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce [animation-delay:-0.15s]" />
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" />
+                {/* Animated progress ring overlay */}
+                <svg className="absolute w-full h-full -rotate-90">
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r="48"
+                    className="stroke-[#a78bfa]/10 stroke-2 fill-none"
+                  />
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r="48"
+                    className="stroke-purple-500 stroke-[3px] fill-none transition-all duration-300"
+                    strokeDasharray={301.6}
+                    strokeDashoffset={301.6 - (301.6 * scanProgress) / 100}
+                    strokeLinecap="round"
+                  />
+                </svg>
+
+                {/* Main wallet token icon in visual center */}
+                <div 
+                  className="w-16 h-16 rounded-full shadow-2xl bg-slate-950/90 border flex flex-col items-center justify-center text-3xl font-bold font-mono transition-transform duration-300 z-10"
+                  style={{
+                    borderColor: `${selectedWallet.color}44`,
+                    boxShadow: `0 0 25px ${selectedWallet.color}25`
+                  }}
+                >
+                  <span className="scale-110">{selectedWallet.icon}</span>
+                </div>
+
+                {/* Floating percentage badge */}
+                <div className="absolute -bottom-2 bg-slate-950 border border-purple-500/30 px-2 py-0.5 rounded-full text-[10px] font-mono text-purple-300 font-bold z-20 shadow-md">
+                  {scanProgress}% Compiled
+                </div>
               </div>
+
+              {/* Text metadata */}
+              <div className="w-full space-y-2">
+                <h4 className="font-extrabold text-[#f1f5f9] text-base uppercase tracking-wider" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  Karma Registry Analyzer
+                </h4>
+                <p className="text-slate-400 text-[11px] leading-relaxed max-w-sm mx-auto font-sans">
+                  Querying globally distributed ledger states to synthesize credit scoring nodes.
+                </p>
+              </div>
+
+              {/* Dynamic scrolling check stages tracking bar */}
+              <div className="w-full bg-[#06060c]/60 p-4 rounded-2xl border border-white/[0.04] text-left space-y-3 relative" id="scan-feedback-terminal">
+                <div className="flex items-center gap-2.5">
+                  <span className="shrink-0">{scanStages[scanStage].icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider font-bold block">
+                      Analytic Phase {scanStage + 1} of 5
+                    </span>
+                    <span className="text-xs font-bold text-slate-200 block truncate mt-0.5">
+                      {scanStages[scanStage].title}
+                    </span>
+                  </div>
+                </div>
+                
+                <p className="text-[10px] text-slate-400 font-mono leading-relaxed border-t border-white/[0.03] pt-2">
+                  {scanStages[scanStage].desc}
+                </p>
+              </div>
+
+              {/* Interactive micro progress lights */}
+              <div className="flex gap-2">
+                {scanStages.map((_, sIdx) => (
+                  <div 
+                    key={sIdx}
+                    className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+                    style={{
+                      backgroundColor: sIdx < scanStage 
+                        ? '#10b981' 
+                        : sIdx === scanStage 
+                          ? '#a78bfa' 
+                          : 'rgba(255, 255, 255, 0.08)',
+                      boxShadow: sIdx === scanStage ? '0 0 8px #a78bfa' : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+
             </div>
           )}
 
-        </GlassCard>
+          </GlassCard>
+        </div>
       </div>
     </div>
   );
@@ -366,10 +599,11 @@ interface DisconnectProps {
 
 export function DisconnectModal({ user, onDisconnect, onClose }: DisconnectProps) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-fade-in">
-      <div onClick={onClose} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
-      <div className="relative w-full max-w-[380px] transform animate-scale-up" style={{ animation: 'fadeUp 0.2s ease-out' }}>
-        <GlassCard style={{ padding: 28 }}>
+    <div className="fixed inset-0 z-[200] overflow-y-auto animate-fade-in" id="disconnect-modal-overlay">
+      <div onClick={onClose} className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" />
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+        <div className="relative w-full max-w-[380px] transform animate-scale-up" style={{ animation: 'fadeUp 0.2s ease-out' }}>
+          <GlassCard style={{ padding: 28 }}>
           <h3 className="font-extrabold text-[#f8fafc] text-xl mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>
             Disconnect Reputation
           </h3>
@@ -391,7 +625,8 @@ export function DisconnectModal({ user, onDisconnect, onClose }: DisconnectProps
               Sign Out
             </button>
           </div>
-        </GlassCard>
+          </GlassCard>
+        </div>
       </div>
     </div>
   );
@@ -428,10 +663,11 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-fade-in">
-      <div onClick={onClose} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
-      <div className="relative w-full max-w-[400px]" style={{ animation: 'fadeUp 0.25s ease' }}>
-        <GlassCard style={{ padding: 28 }}>
+    <div className="fixed inset-0 z-[200] overflow-y-auto animate-fade-in" id="edit-profile-modal-overlay">
+      <div onClick={onClose} className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" />
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+        <div className="relative w-full max-w-[400px]" style={{ animation: 'fadeUp 0.25s ease' }}>
+          <GlassCard style={{ padding: 28 }}>
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-extrabold text-[#f8fafc] text-lg" style={{ fontFamily: "'Syne', sans-serif" }}>
               Edit Profile
@@ -503,7 +739,8 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
               </button>
             </div>
           </div>
-        </GlassCard>
+          </GlassCard>
+        </div>
       </div>
     </div>
   );

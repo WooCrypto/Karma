@@ -52,12 +52,12 @@ export const PERSONALITIES: Record<string, Personality> = {
 };
 
 export const AURAS: Aura[] = [
-  { name: 'Gray Aura', min: 0, max: 19, color: '#6b7280', glow: 'rgba(107,114,128,0.4)', badge: 'Initiate' },
-  { name: 'Blue Aura', min: 20, max: 39, color: '#60a5fa', glow: 'rgba(96,165,250,0.4)', badge: 'Awakened' },
-  { name: 'Green Aura', min: 40, max: 59, color: '#34d399', glow: 'rgba(52,211,153,0.4)', badge: 'Flourishing' },
-  { name: 'Gold Aura', min: 60, max: 74, color: '#fbbf24', glow: 'rgba(251,191,36,0.4)', badge: 'Luminous' },
-  { name: 'Purple Aura', min: 75, max: 89, color: '#a78bfa', glow: 'rgba(167,139,250,0.4)', badge: 'Ascendant' },
-  { name: 'White Aura', min: 90, max: 100, color: '#f8fafc', glow: 'rgba(248,250,252,0.6)', badge: 'Transcendent' },
+  { name: 'Gray Aura', min: 300, max: 499, color: '#6b7280', glow: 'rgba(107,114,128,0.4)', badge: 'Initiate' },
+  { name: 'Blue Aura', min: 500, max: 599, color: '#60a5fa', glow: 'rgba(96,165,250,0.4)', badge: 'Awakened' },
+  { name: 'Green Aura', min: 600, max: 679, color: '#34d399', glow: 'rgba(52,211,153,0.4)', badge: 'Flourishing' },
+  { name: 'Gold Aura', min: 680, max: 739, color: '#fbbf24', glow: 'rgba(251,191,36,0.4)', badge: 'Luminous' },
+  { name: 'Purple Aura', min: 740, max: 799, color: '#a78bfa', glow: 'rgba(167,139,250,0.4)', badge: 'Ascendant' },
+  { name: 'White Aura', min: 800, max: 850, color: '#f8fafc', glow: 'rgba(248,250,252,0.6)', badge: 'Transcendent' },
 ];
 
 export const WALLETS: Wallet[] = [
@@ -70,13 +70,13 @@ export const WALLETS: Wallet[] = [
 ];
 
 export const BASE_LEADERBOARD: LeaderboardRow[] = [
-  { rank: 1, wallet: '0x7f3a...9c21', username: 'CryptoSage', hideWallet: true, personality: 'Diamond', score: 98, aura: 'White Aura', streak: 142 },
-  { rank: 2, wallet: '0x2b8e...4d17', username: 'VisionaryX', hideWallet: false, personality: 'Visionary', score: 96, aura: 'White Aura', streak: 89 },
-  { rank: 3, wallet: '0x9a1f...7e44', username: 'OraclePath', hideWallet: true, personality: 'Sage', score: 94, aura: 'Purple Aura', streak: 201 },
-  { rank: 5, wallet: '0x1e2f...8a33', username: 'IronGuardian', hideWallet: false, personality: 'Guardian', score: 88, aura: 'Purple Aura', streak: 55 },
-  { rank: 6, wallet: '0x6d9b...1c78', username: 'ChainPioneer', hideWallet: true, personality: 'Pioneer', score: 85, aura: 'Gold Aura', streak: 44 },
-  { rank: 7, wallet: '0x3f7c...5e29', username: 'DeepExplorer', hideWallet: false, personality: 'Explorer', score: 82, aura: 'Gold Aura', streak: 33 },
-  { rank: 8, wallet: '0x8a4e...0d61', username: 'RisingPhoenix', hideWallet: true, personality: 'Phoenix', score: 79, aura: 'Gold Aura', streak: 22 },
+  { rank: 1, wallet: '0x7f3a...9c21', username: 'CryptoSage', hideWallet: true, personality: 'Diamond', score: 839, aura: 'White Aura', streak: 142 },
+  { rank: 2, wallet: '0x2b8e...4d17', username: 'VisionaryX', hideWallet: false, personality: 'Visionary', score: 828, aura: 'White Aura', streak: 89 },
+  { rank: 3, wallet: '0x9a1f...7e44', username: 'OraclePath', hideWallet: true, personality: 'Sage', score: 817, aura: 'White Aura', streak: 201 },
+  { rank: 5, wallet: '0x1e2f...8a33', username: 'IronGuardian', hideWallet: false, personality: 'Guardian', score: 784, aura: 'Purple Aura', streak: 55 },
+  { rank: 6, wallet: '0x6d9b...1c78', username: 'ChainPioneer', hideWallet: true, personality: 'Pioneer', score: 768, aura: 'Purple Aura', streak: 44 },
+  { rank: 7, wallet: '0x3f7c...5e29', username: 'DeepExplorer', hideWallet: false, personality: 'Explorer', score: 751, aura: 'Purple Aura', streak: 33 },
+  { rank: 8, wallet: '0x8a4e...0d61', username: 'RisingPhoenix', hideWallet: true, personality: 'Phoenix', score: 735, aura: 'Gold Aura', streak: 22 },
 ];
 
 export function getAura(score: number): Aura {

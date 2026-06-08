@@ -148,7 +148,7 @@ export default function LiveAnalytics({ user }: LiveAnalyticsProps) {
   }, []);
 
   return (
-    <div className="max-w-[1080px] mx-auto pt-24 px-6 pb-16 animate-fade-in text-slate-100">
+    <div className="w-full animate-fade-in text-slate-100" id="live-analytics-viewport">
       {/* Visual background enhancements */}
       <div className="absolute top-1/4 right-[10%] w-[350px] h-[350px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(96,165,250,0.06) 0%, transparent 70%)', animation: 'orbFloat 10s ease-in-out infinite' }} />
 

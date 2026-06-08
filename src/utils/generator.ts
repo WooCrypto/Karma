@@ -12,7 +12,80 @@ export function generateUserProfile(
   let categories: { label: string; value: number; color: string; icon: string }[] = [];
   let activities: ActivityEvent[] = [];
 
-  switch (wallet.id) {
+  // If we have a custom or real address, calculate highly realistic deterministic stats
+  const cleanAddress = address ? address.toLowerCase().trim() : '';
+  const isCustomOrRealAddress = cleanAddress.startsWith('0x') && cleanAddress.length > 25;
+
+  if (isCustomOrRealAddress) {
+    // Elegant character summation hash
+    let hash = 0;
+    for (let i = 0; i < cleanAddress.length; i++) {
+      hash = (hash << 5) - hash + cleanAddress.charCodeAt(i);
+      hash |= 0;
+    }
+    hash = Math.abs(hash);
+
+    // Score ranges beautifully from 62 to 98
+    karmaScore = 62 + (hash % 37);
+    // Streak ranges from 3 to 145 days
+    streak = 3 + (hash % 143);
+
+    const personalities = ['Diamond', 'Visionary', 'Builder', 'Sage', 'Guardian', 'Explorer', 'Phoenix', 'Pioneer'];
+    personality = personalities[hash % personalities.length];
+
+    categories = [
+      { label: 'Patience', value: 65 + (hash % 31), color: '#a78bfa', icon: '◈' },
+      { label: 'Loyalty', value: 60 + ((hash >> 1) % 36), color: '#60a5fa', icon: '◆' },
+      { label: 'Wisdom', value: 70 + ((hash >> 2) % 26), color: '#fbbf24', icon: '⊕' },
+      { label: 'Generosity', value: 55 + ((hash >> 3) % 41), color: '#34d399', icon: '⬡' },
+      { label: 'Energy', value: 60 + ((hash >> 4) % 36), color: '#f472b6', icon: '◉' },
+    ];
+
+    const assets = ['ETH', 'USDC', 'USDT', 'WBTC', 'ARB', 'OP', 'POL'];
+    const txTypes = ['Trade', 'Stake', 'Mint', 'Transfer', 'Vote'] as const;
+
+    // Construct 3 highly customized transactions
+    activities = [
+      {
+        id: `tx-det-${hash % 1000}-1`,
+        timestamp: 'Just now',
+        type: txTypes[hash % txTypes.length],
+        txHash: cleanAddress.slice(0, 6) + '...' + (hash % 9999).toString().padStart(4, '0'),
+        amount: Number((1.2 + (hash % 8) * 3.1).toFixed(2)),
+        asset: assets[(hash >> 1) % assets.length],
+        scoreDelta: 3 + (hash % 3),
+        patienceImpact: 2 + (hash % 4),
+        loyaltyImpact: 1 + ((hash >> 1) % 5),
+        wisdomImpact: 2 + ((hash >> 2) % 4),
+      },
+      {
+        id: `tx-det-${hash % 1000}-2`,
+        timestamp: '4h ago',
+        type: txTypes[(hash + 1) % txTypes.length],
+        txHash: cleanAddress.slice(0, 6) + '...' + ((hash + 123) % 9999).toString().padStart(4, '0'),
+        amount: Number((0.5 + ((hash + 2) % 6) * 12).toFixed(1)),
+        asset: assets[(hash >> 2) % assets.length],
+        scoreDelta: 2 + ((hash + 1) % 3),
+        patienceImpact: 1 + ((hash + 1) % 5),
+        loyaltyImpact: 2 + ((hash + 2) % 4),
+        wisdomImpact: 1 + ((hash + 3) % 5),
+      },
+      {
+        id: `tx-det-${hash % 1000}-3`,
+        timestamp: '1d ago',
+        type: txTypes[(hash + 2) % txTypes.length],
+        txHash: cleanAddress.slice(0, 6) + '...' + ((hash + 456) % 9999).toString().padStart(4, '0'),
+        amount: Number((5 + ((hash + 5) % 12) * 50)),
+        asset: assets[(hash >> 3) % assets.length],
+        scoreDelta: 1 + ((hash + 2) % 3),
+        patienceImpact: 2 + ((hash + 2) % 4),
+        loyaltyImpact: 1 + ((hash + 3) % 4),
+        wisdomImpact: 3 + ((hash + 4) % 3),
+      }
+    ];
+  } else {
+    // Normal static preset compilation routes
+    switch (wallet.id) {
     case 'metamask':
       karmaScore = 91;
       streak = 88;
@@ -345,6 +418,7 @@ export function generateUserProfile(
         },
       ];
   }
+  }
 
   return {
     username,
@@ -353,7 +427,7 @@ export function generateUserProfile(
     wallet,
     streak,
     connectedAt: new Date().toISOString(),
-    karmaScore,
+    karmaScore: 300 + Math.round(karmaScore * 5.5),
     personality,
     categories,
     activities,

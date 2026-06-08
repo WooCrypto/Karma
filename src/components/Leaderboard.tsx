@@ -4,7 +4,7 @@ import { AURAS, PERSONALITIES, BASE_LEADERBOARD, truncateWallet } from '../const
 import GlassCard from './GlassCard';
 
 interface LeaderboardProps {
-  user: User;
+  user?: User | null;
 }
 
 export default function Leaderboard({ user }: LeaderboardProps) {
@@ -17,8 +17,8 @@ export default function Leaderboard({ user }: LeaderboardProps) {
   const filters: Array<'Daily' | 'Weekly' | 'Monthly' | 'All Time'> = ['Daily', 'Weekly', 'Monthly', 'All Time'];
   const tabs: Array<'Top Karma' | 'Rising Fast' | 'Longest Streak' | 'Top Aura'> = ['Top Karma', 'Rising Fast', 'Longest Streak', 'Top Aura'];
 
-  // Dynamically inject user inside the leaderboard to simulate live competition
-  const userRow: LeaderboardRow = {
+  // Dynamically inject user inside the leaderboard to simulate live competition if connected
+  const userRow: LeaderboardRow | null = user ? {
     rank: 4,
     wallet: user.address,
     username: user.username,
@@ -28,7 +28,7 @@ export default function Leaderboard({ user }: LeaderboardProps) {
     aura: 'Purple Aura',
     streak: user.streak,
     isMe: true,
-  };
+  } : null;
 
   // Convert tab choice to sorting guidelines
   const handleTabClick = (t: 'Top Karma' | 'Rising Fast' | 'Longest Streak' | 'Top Aura') => {
@@ -60,7 +60,7 @@ export default function Leaderboard({ user }: LeaderboardProps) {
 
   // Generate share link of verified profile row with username fallback if active
   function handleShareRow(row: LeaderboardRow) {
-    const handle = row.hideWallet ? `@${row.username}` : (row.isMe ? user.address : row.wallet);
+    const handle = row.hideWallet ? `@${row.username}` : ((row.isMe && user) ? user.address : row.wallet);
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://karma-ai.net';
     const link = `${origin}/?user=${encodeURIComponent(handle)}`;
 
@@ -76,7 +76,7 @@ export default function Leaderboard({ user }: LeaderboardProps) {
   }
 
   // Merge lists and apply dynamic custom sorting over addresses/usernames
-  const rows = [...BASE_LEADERBOARD.slice(0, 3), userRow, ...BASE_LEADERBOARD.slice(3)].sort((a, b) => {
+  const rows = [...BASE_LEADERBOARD.slice(0, 3), ...(userRow ? [userRow] : []), ...BASE_LEADERBOARD.slice(3)].sort((a, b) => {
     let comparison = 0;
     if (sortField === 'score') {
       comparison = a.score - b.score;
@@ -88,8 +88,8 @@ export default function Leaderboard({ user }: LeaderboardProps) {
       comparison = a.personality.localeCompare(b.personality);
     } else if (sortField === 'identity') {
       // If wallet is hidden, sort by username. Otherwise compare the raw address string representation.
-      const aVal = a.hideWallet ? `@${a.username}` : (a.isMe ? user.address : a.wallet);
-      const bVal = b.hideWallet ? `@${b.username}` : (b.isMe ? user.address : b.wallet);
+      const aVal = a.hideWallet ? `@${a.username}` : ((a.isMe && user) ? user.address : a.wallet);
+      const bVal = b.hideWallet ? `@${b.username}` : ((b.isMe && user) ? user.address : b.wallet);
       comparison = aVal.localeCompare(bVal);
     }
 
@@ -101,14 +101,25 @@ export default function Leaderboard({ user }: LeaderboardProps) {
 
   return (
     <div className="max-w-[900px] mx-auto pt-24 px-4 sm:px-6 pb-16 animate-fade-in text-slate-100" id="leaderboard-root-view">
-      <div className="mb-10 text-center sm:text-left">
-        <div className="text-[10px] uppercase font-mono tracking-widest text-[#a78bfa] mb-2">Global Reputation Index</div>
-        <h2 className="text-3xl md:text-4xl font-extrabold text-slate-100 tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
-          Leaderboard
-        </h2>
-        <p className="text-slate-400 mt-2 text-sm max-w-xl">
-          The on-chain elite. Ranked by verifiable smart contract behavior, holding history, and ecosystem goodwill.
-        </p>
+      <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="text-center sm:text-left">
+          <div className="text-[10px] uppercase font-mono tracking-widest text-[#a78bfa] mb-2">Global Reputation Index</div>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-100 tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
+            Leaderboard
+          </h2>
+          <p className="text-slate-400 mt-2 text-sm max-w-xl">
+            The on-chain elite. Ranked by verifiable smart contract behavior, holding history, and ecosystem goodwill.
+          </p>
+        </div>
+        
+        {!user && (
+          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center md:text-left shrink-0 max-w-sm">
+            <span className="text-xs text-purple-300 block font-bold mb-1 font-mono">✦ NOT INDEXED</span>
+            <span className="text-[11px] text-slate-400 block leading-relaxed">
+              Connect your sandbox wallet to join the ranked directory and customize your pseudonymous profile.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Floating toast notification panel */}
@@ -240,9 +251,9 @@ export default function Leaderboard({ user }: LeaderboardProps) {
                       {/* Sub address label showing username replacement consistently on toggle active */}
                       <div 
                         className="text-xs font-mono text-slate-500 mt-1 select-all hover:text-slate-300 transition-colors"
-                        title={row.hideWallet ? `@${row.username} (Wallet identity hidden)` : (isMe ? user.address : row.wallet)}
+                        title={row.hideWallet ? `@${row.username} (Wallet identity hidden)` : ((isMe && user) ? user.address : row.wallet)}
                       >
-                        {row.hideWallet ? `@${row.username}` : (isMe ? truncateWallet(user.address) : truncateWallet(row.wallet))}
+                        {row.hideWallet ? `@${row.username}` : ((isMe && user) ? truncateWallet(user.address) : truncateWallet(row.wallet))}
                       </div>
                     </div>
 

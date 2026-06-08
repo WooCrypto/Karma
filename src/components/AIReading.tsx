@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { User, Reading } from '../types';
 import GlassCard from './GlassCard';
+import { Download, CheckCircle2 } from 'lucide-react';
 
 interface AIReadingProps {
   user: User;
@@ -34,6 +35,87 @@ export default function AIReading({ user }: AIReadingProps) {
   const [reading, setReading] = useState<Reading | null>(null);
   const [fallbackIndex, setFallbackIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
+  const [exportedStatus, setExportedStatus] = useState(false);
+
+  function exportSummaryReport() {
+    if (!reading) return;
+
+    const dateStr = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+
+    const categoryLines = (user.categories || []).map(c => {
+      const val = typeof c.value === 'number' ? c.value : 0;
+      const barFilled = '█'.repeat(Math.round(val / 10));
+      const barEmpty = '░'.repeat(10 - Math.round(val / 10));
+      return `${c.label.padEnd(12)} | [${barFilled}${barEmpty}] ${val}%  (${c.icon || '✦'})`;
+    }).join('\n');
+
+    const activityLines = (user.activities || []).map(a => {
+      return `- [${a.timestamp}] ${a.type} of ${a.amount} ${a.asset} (Tx: ${a.txHash}) -> Score Delta: +${a.scoreDelta}`;
+    }).join('\n');
+
+    const mdContent = `================================================================================
+💠 KARMA LEDGER REPUTATION AUDIT SUMMARY REPORT 💠
+================================================================================
+Generated: ${dateStr}
+
+👤 CREDENTIAL PROFILE
+--------------------------------------------------------------------------------
+Username:        @${user.username}
+On-Chain Addr:   ${user.address}
+Linked Wallet:   ${user.wallet.name}
+Aura Alignment:  ${user.personality || 'Visionary'}
+
+📈 TRUST & FIDELITY INDICES
+--------------------------------------------------------------------------------
+Karma Score:     ${user.karmaScore || 70} / 100
+Streak Duration: ${user.streak || 0} days active
+
+📊 BEHAVIORAL ATTRIBUTES SCORECARD
+--------------------------------------------------------------------------------
+${categoryLines || 'No attributes records indexed.'}
+
+🔮 EXPERT AI BEHAVIORAL ANALYSIS
+--------------------------------------------------------------------------------
+Reading Title:   ${reading.title}
+
+${reading.paragraphs.join('\n\n')}
+
+📌 CORE TAKEAWAYS
+--------------------------------------------------------------------------------
+Key Takeaway:    "${reading.insight}"
+Focus Blueprint: ${reading.focus}
+
+📝 RECENT ACTIVITIES VERIFIED BY LEDGER
+--------------------------------------------------------------------------------
+${activityLines || 'No recent activity records found.'}
+
+--------------------------------------------------------------------------------
+This reputation audit was compiled using on-chain consensus history.
+================================================================================`;
+
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `karma-reputation-report-${user.username || 'user'}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Show export success toast
+    setExportedStatus(true);
+    setTimeout(() => {
+      setExportedStatus(false);
+    }, 4000);
+  }
 
   async function generateReading() {
     setLoading(true);
@@ -180,14 +262,32 @@ export default function AIReading({ user }: AIReadingProps) {
             </GlassCard>
           </div>
 
+           {/* Success notification overlay */}
+          {exportedStatus && (
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center font-mono flex items-center justify-center gap-2 animate-fade-in relative overflow-hidden" id="export-success-message">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Karma reputation audit summary <b>.md</b> report downloaded successfully. Check your browser downloads!</span>
+            </div>
+          )}
+
           {/* Regeneration capabilities */}
-          <div className="flex gap-4 items-center justify-center pt-4">
+          <div className="flex gap-4 flex-wrap items-center justify-center pt-4" id="ai-reading-action-controls">
             <button
               onClick={generateReading}
               className="text-xs font-semibold px-5 py-3 rounded-xl border border-[#a78bfa]/25 bg-[#a78bfa]/8 text-[#c084fc] hover:bg-[#a78bfa]/15 transition-all cursor-pointer"
             >
               ↻ Regenerate Reading
             </button>
+            
+            <button
+              id="export-reputation-summary-btn"
+              onClick={exportSummaryReport}
+              className="text-xs font-semibold px-5 py-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export Audit (.MD)
+            </button>
+
             <button
               onClick={() => setReading(null)}
               className="text-xs font-semibold px-5 py-3 rounded-xl border border-white/5 bg-white/5 text-slate-300 hover:bg-white/10 transition-all cursor-pointer"
