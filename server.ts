@@ -1,6 +1,8 @@
 import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 
@@ -10,8 +12,15 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Access body variables
-app.use(express.json());
+// Ensure passports_saved directory exists on bootstrap
+const PASSPORTS_DIR = path.join(process.cwd(), 'passports_saved');
+if (!fs.existsSync(PASSPORTS_DIR)) {
+  fs.mkdirSync(PASSPORTS_DIR, { recursive: true });
+}
+
+// Access body variables with increased payload limits so base64 canvas exports upload successfully
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Lazy-initialise or guard clean Gemini SDK initialization to prevent startup crashes
 let aiInstance: GoogleGenAI | null = null;
@@ -126,6 +135,179 @@ Strict rules:
   } catch (error: any) {
     console.error('Server AI reading generation error:', error);
     res.status(500).json({ error: error.message || 'Server failed to calculate AI reputation parameters.' });
+  }
+});
+
+// ── API Endpoint: Save Dynamic Passport Image ──
+app.post('/api/passport/save', async (req, res) => {
+  try {
+    const { username, image } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    // Capture base64 png data
+    const base64Data = image.replace(/^data:image\/png;base64,/, '');
+    const id = crypto.randomBytes(8).toString('hex');
+    const filename = `${id}.png`;
+    const filepath = path.join(PASSPORTS_DIR, filename);
+
+    fs.writeFileSync(filepath, base64Data, 'base64');
+    
+    console.log(`Saved dynamic reputation passport for @${username} under id: ${id}`);
+    res.json({ id });
+  } catch (error: any) {
+    console.error('Error saving passport:', error);
+    res.status(500).json({ error: 'Failed to write passport to disk' });
+  }
+});
+
+// ── GET Endpoint: Retrieve Direct Image PNG ──
+app.get('/passport/img/:id.png', (req, res) => {
+  try {
+    const { id } = req.params;
+    const filepath = path.join(PASSPORTS_DIR, `${id}.png`);
+    
+    if (fs.existsSync(filepath)) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=31200000'); // Cache for durable delivery
+      return res.sendFile(filepath);
+    }
+    
+    // Fallback to primary marketing fallback asset if not specifically found
+    const staticFallback = path.join(process.cwd(), 'src', 'assets', 'images', 'karma_share_card_1780957350199.png');
+    if (fs.existsSync(staticFallback)) {
+      res.setHeader('Content-Type', 'image/png');
+      return res.sendFile(staticFallback);
+    }
+    
+    res.status(404).send('Passport image placeholder not found');
+  } catch (err) {
+    res.status(500).send('Internal server error retrieving passport');
+  }
+});
+
+// ── GET Endpoint: Serve dynamic static images directly for absolute domain compatibility ──
+app.get('/src/assets/images/:filename', (req, res) => {
+  try {
+    const filepath = path.join(process.cwd(), 'src', 'assets', 'images', req.params.filename);
+    if (fs.existsSync(filepath)) {
+      res.setHeader('Content-Type', 'image/png');
+      return res.sendFile(filepath);
+    }
+    res.status(404).send('Local static asset not found');
+  } catch (e) {
+    res.status(500).send('Server static file error');
+  }
+});
+
+// ── GET Endpoint: Elegant HTML Social Share OG page for crawler ──
+app.get('/share/passport/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const filepath = path.join(PASSPORTS_DIR, `${id}.png`);
+    if (!fs.existsSync(filepath)) {
+      return res.redirect('/');
+    }
+
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] === 'https' || req.secure ? 'https' : 'http';
+    const baseUrl = `${protocol}://${host}`;
+    const imageUrl = `${baseUrl}/passport/img/${id}.png`;
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sovereign Credit Reputation Passport</title>
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@KarmaAIScore">
+  <meta name="twitter:creator" content="@KarmaAIScore">
+  <meta name="twitter:title" content="Web3 Credit Reputation Passport">
+  <meta name="twitter:description" content="View my sovereign credit intelligence ledger score and verified dynamic wallet standing on Karma AI index.">
+  <meta name="twitter:image" content="${imageUrl}">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Verified Sovereign Reputation Passport">
+  <meta property="og:description" content="View my dynamic on-chain holding patterns, patience score, and eligibility for custom DeFi credit lines.">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:url" content="${baseUrl}/share/passport/${id}">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background-color: #020106;
+      color: #94a3b8;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    .card {
+      background-color: #0c0a18;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 20px 0;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    h1 {
+      color: #ffffff;
+      font-size: 20px;
+      margin-top: 0;
+      font-weight: 800;
+    }
+    p {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #a78bfa, #3b1c6e);
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+      margin-top: 15px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>KARMA REPUTATION PASSPORT</h1>
+    <p>Loading decentralized sovereign credential. Redirecting shortly to the live analytics panel.</p>
+    <img src="/passport/img/${id}.png" alt="Karma Passport">
+    <br>
+    <a href="/" class="btn">Enter Karma Applet</a>
+  </div>
+  <script>
+    setTimeout(function() {
+      window.location.href = '/';
+    }, 2500);
+  </script>
+</body>
+</html>`);
+  } catch (err) {
+    res.redirect('/');
   }
 });
 

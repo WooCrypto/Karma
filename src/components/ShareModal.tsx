@@ -2,6 +2,21 @@ import { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
 import { getAura, PERSONALITIES, truncateWallet } from '../constants';
 import GlassCard from './GlassCard';
+import { Twitter } from 'lucide-react';
+
+export function getLoanLimit(karmaScore: number): number {
+  const scaledScoreForCalc = Math.max(0, Math.min(100, Math.round((karmaScore - 300) / 5.5)));
+  const baseVal = (scaledScoreForCalc - 50) / 10;
+  const loanMultiplier = baseVal > 0 ? Math.max(1, Math.pow(baseVal, 2.6)) : 1;
+  
+  // Deterministic random seed based on score value to generate stable higher figures
+  const seed = (karmaScore * 723) % 43000;
+  const randHigherAdder = (seed % 24500) + 35000; // random component between $35k and $59.5k
+  
+  // Scale base loan limit to high attractive figures
+  const baseLimit = (65000 * loanMultiplier) + randHigherAdder;
+  return Math.floor(baseLimit);
+}
 
 interface ShareModalProps {
   user: User;
@@ -13,6 +28,9 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
   const [downloadingImage, setDownloadingImage] = useState(false);
   const [copyingImage, setCopyingImage] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  
+  const [sharedId, setSharedId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const aura = getAura(user.karmaScore);
@@ -21,6 +39,43 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
   // Calculate dynamic global rank percent based on standard score formula
   const rankPercent = ((850 - user.karmaScore) / 550 * 9.8 + 0.2).toFixed(2);
   const rank = `Top ${rankPercent}%`;
+
+  // Autoload drawing state to dynamic backend folder on mount for immediate live sharing URL
+  useEffect(() => {
+    if (canvasRef.current && !sharedId && !isUploading) {
+      setIsUploading(true);
+      setTimeout(async () => {
+        try {
+          if (!canvasRef.current) return;
+          await drawPassport(canvasRef.current);
+          const dataUrl = canvasRef.current.toDataURL('image/png');
+          
+          const res = await fetch('/api/passport/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username: user.username,
+              image: dataUrl,
+            }),
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            if (data.id) {
+              setSharedId(data.id);
+              console.log('Sovereign passport uploaded. Live link is up at id:', data.id);
+            }
+          }
+        } catch (e) {
+          console.error('Error auto-uploading passport:', e);
+        } finally {
+          setIsUploading(false);
+        }
+      }, 700);
+    }
+  }, [user.username]);
 
   // Clear share status after 3 seconds
   useEffect(() => {
@@ -36,6 +91,15 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
   function handleCopyText() {
     setCopyingStats(true);
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    
+    // Calculate loan eligibility limits using the updated high-limit function
+    const karmaScore = user.karmaScore || 700;
+    const maxBorrowUSDT = getLoanLimit(karmaScore);
+
+    const cardLink = sharedId 
+      ? `${window.location.origin}/share/passport/${sharedId}`
+      : `${window.location.origin}/src/assets/images/karma_share_card_1780957350199.png`;
+
     const textToCopy = `✧ MY KARMA REPUTATION PASSPORT ✧
 ━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 Identity: @${user.username}
@@ -43,6 +107,9 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
 🌎 Global Rank: ${rank}
 🔥 Holding Streak: ${user.streak} Days 🔥
 📊 Reputation Score: ${user.karmaScore}/850 [${aura.name} ${aura.badge}]
+💸 Eligible Loan Limit: $${maxBorrowUSDT.toLocaleString()} USDT/USDC
+
+🖼️ Passport Preview: ${cardLink}
 
 🎨 Pillars Bio:
 ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█'.repeat(Math.round(c.value / 12)).padEnd(8, '░')}]`).join('\n')}
@@ -54,7 +121,7 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
 
     navigator.clipboard.writeText(textToCopy)
       .then(() => {
-        setShareStatus('Text summary copied to clipbaord!');
+        setShareStatus('Text summary copied to clipboard!');
       })
       .catch((err) => {
         console.error('Failed to copy text:', err);
@@ -63,6 +130,20 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
       .finally(() => {
         setCopyingStats(false);
       });
+  }
+
+  // Handle direct Twitter / X sharing flow
+  function handleTwitterShare() {
+    const karmaScore = user.karmaScore || 700;
+    const maxBorrowUSDT = getLoanLimit(karmaScore);
+
+    const cardLink = sharedId 
+      ? `${window.location.origin}/share/passport/${sharedId}`
+      : `${window.location.origin}/src/assets/images/karma_share_card_1780957350199.png`;
+
+    const tweetText = `🔍 Just checked my sovereign identity & credit reputation passport on @KarmaAIScore !\n\n🔮 Archetype: ${personality.name} ${personality.icon}\n📊 Reputation Score: ${user.karmaScore}/850 [${aura.name} ${aura.badge}]\n🔥 Hold Streak: ${user.streak} Days\n💸 Eligible Loan Limit: $${maxBorrowUSDT.toLocaleString()} USDT/USDC\n\n🖼️ Passport Preview: ${cardLink}\n\nJoin the active sovereign credit index live:\n${window.location.origin}\n\n#Karma #Web3Karma #DeFiPassport #Solana #Base`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+    window.open(url, '_blank', 'noreferrer,noopener');
   }
 
   // Draw majestic high-res vector passport card to HTML Canvas element
@@ -257,15 +338,24 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
       ctx.font = 'bold 11px monospace';
       ctx.fillText(`🔥 STREAK: ${user.streak}-DAY CONVICTION RECORD`, width / 2, scoreY + 135);
 
+      // Calculate loan limit for drawing on high-res passport using our custom function
+      const karmaScoreDraw = user.karmaScore || 700;
+      const maxBorrowUSDTDraw = getLoanLimit(karmaScoreDraw);
+
+      // Rep Loan Limit text label
+      ctx.fillStyle = '#34d399'; // Emerald green
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(`💸 ELIGIBLE DEFI LOAN: $${maxBorrowUSDTDraw.toLocaleString()} USDT/USDC`, width / 2, scoreY + 152);
+
       // Separator before category metrics
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
       ctx.beginPath();
-      ctx.moveTo(60, scoreY + 160);
-      ctx.lineTo(width - 60, scoreY + 160);
+      ctx.moveTo(60, scoreY + 170);
+      ctx.lineTo(width - 60, scoreY + 170);
       ctx.stroke();
 
       // 8. Behavioral Pillars Grid
-      const pillarsY = scoreY + 190;
+      const pillarsY = scoreY + 198;
       const cats = user.categories || [
         { label: 'Patience', value: 91, color: '#a78bfa', icon: '◈' },
         { label: 'Loyalty', value: 88, color: '#60a5fa', icon: '◆' },
@@ -504,6 +594,20 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
               </div>
             </div>
 
+            {/* Rep Loan Limit row */}
+            {(() => {
+              const karmaScoreCalc = user.karmaScore || 700;
+              const maxBorrowUSDT = getLoanLimit(karmaScoreCalc);
+              return (
+                <div className="py-2.5 border-b border-white/[0.04] flex justify-between items-center text-xs font-mono">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold flex items-center gap-1">💸 Reputation Loan Term</span>
+                  <span className="text-[11px] font-black text-emerald-400">
+                    Up to ${maxBorrowUSDT.toLocaleString()} USDT/USDC
+                  </span>
+                </div>
+              );
+            })()}
+
             {/* High-level status checklist summary mock */}
             <div className="pt-4 space-y-1.5">
               {(user.categories || []).slice(0, 3).map((c) => (
@@ -544,6 +648,18 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
                 <span>{downloadingImage ? 'Rendering...' : '⬇ Download Passport Card'}</span>
               </button>
             </div>
+
+            {/* Direct Twitter / X share option */}
+            <button
+              onClick={handleTwitterShare}
+              className="w-full py-3.5 px-4 rounded-xl border-none outline-none text-white font-black text-xs leading-none transition-all cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01] hover:bg-[#1a8cd8]"
+              style={{
+                backgroundColor: '#1d9bf0',
+              }}
+            >
+              <Twitter className="w-4 h-4 shrink-0 text-white" />
+              <span>Share Passport via Tweet Card</span>
+            </button>
 
             {/* Quick text copy option */}
             <button

@@ -36,6 +36,8 @@ export interface User {
   connectedAt: string;
   karmaScore: number;
   personality?: string;
+  auraPoints?: number;
+  lastClaimedAt?: string;
   activities?: ActivityEvent[];
   categories?: { label: string; value: number; color: string; icon: string }[];
 }

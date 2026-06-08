@@ -386,7 +386,7 @@ export default function Lenders({ user }: LendersProps) {
               </div>
 
               {/* Fractional quick select list */}
-              <div className="grid grid-cols-4 gap-2" id="quick-fractions-selectors">
+              <div className="grid grid-cols-2 xs:grid-cols-4 gap-2" id="quick-fractions-selectors">
                 {[
                   { percent: 0.25, label: '25%' },
                   { percent: 0.50, label: '50%' },
@@ -411,7 +411,7 @@ export default function Lenders({ user }: LendersProps) {
               <label id="label-repayment-timeline-days" className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold block">
                 Repayment Window Period
               </label>
-              <div className="grid grid-cols-4 gap-2" id="repayment-window-tabs-deck">
+              <div className="grid grid-cols-2 xs:grid-cols-4 gap-2" id="repayment-window-tabs-deck">
                 {[
                   { Days: 30, text: '30 Days', rateLabel: 'Short Option' },
                   { Days: 90, text: '90 Days', rateLabel: 'Standard' },
@@ -429,7 +429,7 @@ export default function Lenders({ user }: LendersProps) {
                       borderColor: selectedDuration === opt.Days ? '#a78bfa' : 'rgba(255,255,255,0.05)',
                     }}
                   >
-                    <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1 font-sans">
+                    <span className="text-[11px] font-bold text-slate-200 flex items-center justify-center gap-1 font-sans">
                       <Clock className="w-2.5 h-2.5 text-slate-500" />
                       {opt.text}
                     </span>

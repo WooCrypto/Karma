@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import { User } from '../types';
 import { getAura, PERSONALITIES, truncateWallet } from '../constants';
 import GlassCard from './GlassCard';
 import KarmaRing from './KarmaRing';
 import LiveAnalytics from './LiveAnalytics';
 import Tag from './Tag';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import ShareModal from './ShareModal';
 import ReputationTimeline from './ReputationTimeline';
 import WalletArena from './WalletArena';
 import KastBooster from './KastBooster';
+import AuraAirdropPortal from './AuraAirdropPortal';
 
 interface DashboardProps {
   user: User;
@@ -24,6 +26,52 @@ interface Category {
   icon: string;
 }
 
+// Generates simulated historical progress leading up to user's actual current score
+const generateTrendData = (currentScore: number, tf: '7D' | '30D' | '90D') => {
+  const data = [];
+  const now = new Date();
+  const daysCount = tf === '7D' ? 7 : tf === '30D' ? 30 : 90;
+  
+  // Starting ratio of current score based on length (longer span has more growth)
+  const startingPercent = tf === '7D' ? 0.98 : tf === '30D' ? 0.92 : 0.76;
+  const growthSpan = 1 - startingPercent;
+  
+  for (let i = 0; i < daysCount; i++) {
+    const fraction = i / (daysCount - 1 || 1); // 0 to 1
+    const progress = Math.pow(fraction, 1.22); // exponential curve Look
+    
+    // Smooth sinusoidal wave pattern as the rating stabilizes over time
+    const wiggle = Math.sin(fraction * Math.PI * 4) * 0.012 * (1 - fraction); 
+    
+    const computed = Math.round(currentScore * (startingPercent + progress * growthSpan + wiggle));
+    const scoreVal = Math.max(300, Math.min(850, computed));
+    
+    const d = new Date();
+    d.setDate(now.getDate() - (daysCount - 1 - i));
+    
+    // Only display dates for selected reference items to preserve layout density
+    let timeLabel = '';
+    if (tf === '7D') {
+      timeLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } else if (tf === '30D') {
+      if (i % 6 === 0 || i === daysCount - 1) {
+        timeLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+    } else {
+      if (i % 18 === 0 || i === daysCount - 1) {
+        timeLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+    }
+    
+    data.push({
+      time: timeLabel,
+      fullDate: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      reputation: scoreVal,
+    });
+  }
+  return data;
+};
+
 const HISTORICAL_POINTS = [
   { time: 'May 31', reputation: 762 },
   { time: 'Jun 1', reputation: 762 },
@@ -36,7 +84,16 @@ const HISTORICAL_POINTS = [
 
 export default function Dashboard({ user, onDisconnect, onUpdateUser }: DashboardProps) {
   const [subTab, setSubTab] = useState<'Reputation' | 'Activity' | 'Arena' | 'Kast'>('Reputation');
+  const [timeframe, setTimeframe] = useState<'7D' | '30D' | '90D'>('7D');
   const [isKastBoosted, setIsKastBoosted] = useState(false);
+  const [dashboardTheme, setDashboardTheme] = useState<'space-blue' | 'charcoal-black'>(() => {
+    try {
+      const saved = localStorage.getItem('karma_dashboard_theme');
+      return (saved === 'charcoal-black' || saved === 'space-blue') ? saved : 'space-blue';
+    } catch {
+      return 'space-blue';
+    }
+  });
 
   useEffect(() => {
     try {
@@ -118,6 +175,11 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
 
   const unlockedCount = BADGES.filter(b => b.unlocked).length;
 
+  const dynTrendData = generateTrendData(user.karmaScore, timeframe);
+  const startScore = dynTrendData[0].reputation;
+  const endScore = dynTrendData[dynTrendData.length - 1].reputation;
+  const growthPercent = (((endScore - startScore) / startScore) * 100).toFixed(1);
+
   // Let indicators animate slightly on mount
   useEffect(() => {
     if (user.categories) {
@@ -126,22 +188,74 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
   }, [user]);
 
   return (
-    <div className="max-w-[1080px] mx-auto pt-24 px-4 sm:px-6 pb-16 animate-fade-in text-slate-100" id="reputation-portal-container">
+    <div className="max-w-[1080px] mx-auto pt-24 px-4 sm:px-6 pb-16 animate-fade-in text-slate-100 relative z-10" id="reputation-portal-container">
       
+      {/* Dashboard Custom Theme Background Layer */}
+      <div 
+        className={`fixed inset-0 transition-all duration-500 pointer-events-none ${
+          dashboardTheme === 'space-blue' 
+            ? 'bg-gradient-to-b from-[#030614] via-[#05060e] to-[#04040a]' 
+            : 'bg-[#09090c]'
+        }`}
+        style={{ zIndex: -1 }}
+      >
+        {/* Subtle dynamic grid pattern for high detail */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.007)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.007)_1px,transparent_1px)] bg-[size:40px_40px] opacity-70" />
+        {/* Soft cosmic glow when in space blue */}
+        {dashboardTheme === 'space-blue' && (
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-indigo-500/5 blur-[120px]" />
+        )}
+      </div>
+
       {/* Sub-navigation controls for the dashboard */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
-        <div>
-          <div className="text-[10px] uppercase font-mono tracking-widest text-[#a78bfa] mb-1">
-            Reputation Portal
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full lg:w-auto gap-4">
+          <div>
+            <div className="text-[10px] uppercase font-mono tracking-widest text-[#a78bfa] mb-1">
+              Reputation Portal
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
+              Welcome Back, <span className="text-[#a78bfa]">@{user.username}</span>
+            </h2>
+            <div className="text-slate-400 text-xs font-mono mt-1 select-none flex items-center gap-1.5 flex-wrap">
+              <span>{user.hideWallet ? `@${user.username}` : truncateWallet(user.address)}</span>
+              <span className="text-slate-600">·</span>
+              <span className="text-[10px]">{user.wallet.icon}</span>
+              <span>{user.wallet.name}</span>
+            </div>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
-            Welcome Back, <span className="text-[#a78bfa]">@{user.username}</span>
-          </h2>
-          <div className="text-slate-400 text-xs font-mono mt-1 select-none flex items-center gap-1.5 flex-wrap">
-            <span>{user.hideWallet ? `@${user.username}` : truncateWallet(user.address)}</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-[10px]">{user.wallet.icon}</span>
-            <span>{user.wallet.name}</span>
+          
+          {/* Theme Selector Widget */}
+          <div className="flex items-center gap-1 bg-white/[0.02] p-1 rounded-xl border border-white/[0.05] h-fit md:ml-4">
+            <button
+              onClick={() => {
+                setDashboardTheme('space-blue');
+                try { localStorage.setItem('karma_dashboard_theme', 'space-blue'); } catch {}
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[9.5px] font-bold cursor-pointer transition-all border-none uppercase tracking-wider font-mono select-none"
+              style={{
+                background: dashboardTheme === 'space-blue' ? 'rgba(167, 139, 250, 0.15)' : 'transparent',
+                color: dashboardTheme === 'space-blue' ? '#c084fc' : 'rgba(241, 245, 249, 0.4)',
+                border: dashboardTheme === 'space-blue' ? '1px solid rgba(167, 139, 250, 0.25)' : '1px solid transparent',
+                boxShadow: dashboardTheme === 'space-blue' ? '0 0 10px rgba(167, 139, 250, 0.1)' : 'none',
+              }}
+            >
+              🪐 Space Blue
+            </button>
+            <button
+              onClick={() => {
+                setDashboardTheme('charcoal-black');
+                try { localStorage.setItem('karma_dashboard_theme', 'charcoal-black'); } catch {}
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[9.5px] font-bold cursor-pointer transition-all border-none uppercase tracking-wider font-mono select-none"
+              style={{
+                background: dashboardTheme === 'charcoal-black' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                color: dashboardTheme === 'charcoal-black' ? '#ffffff' : 'rgba(241, 245, 249, 0.4)',
+                border: dashboardTheme === 'charcoal-black' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid transparent',
+              }}
+            >
+              🌑 Charcoal
+            </button>
           </div>
         </div>
 
@@ -227,7 +341,12 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
             
             {/* Karma Ring Metric card */}
-            <div className="md:col-span-12 lg:col-span-4 flex flex-col">
+            <motion.div 
+              className="md:col-span-12 lg:col-span-4 flex flex-col"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+            >
               <GlassCard className="p-6 md:p-8 text-center flex flex-col items-center justify-center flex-1">
                 <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-4">Reputation Quotient</div>
                 <KarmaRing score={user.karmaScore} aura={aura} size={170} />
@@ -247,10 +366,15 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
                   </button>
                 </div>
               </GlassCard>
-            </div>
+            </motion.div>
 
             {/* Wallet Archetype Personality details */}
-            <div className="md:col-span-12 lg:col-span-4 flex flex-col">
+            <motion.div 
+              className="md:col-span-12 lg:col-span-4 flex flex-col"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            >
               <GlassCard className="p-6 md:p-8 flex flex-col justify-between flex-1">
                 <div>
                   <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-4">Archetype Profile</div>
@@ -280,10 +404,16 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
                   <span className="text-[10px] text-slate-500 font-mono">Via {user.wallet.name}</span>
                 </div>
               </GlassCard>
-            </div>
+            </motion.div>
 
             {/* Interactive Reputation Badges Gallery */}
-            <div className="md:col-span-12 lg:col-span-4 flex flex-col" id="badges-gallery-card">
+            <motion.div 
+              className="md:col-span-12 lg:col-span-4 flex flex-col" 
+              id="badges-gallery-card"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            >
               <GlassCard className="p-6 md:p-8 flex flex-col justify-between flex-1 relative overflow-visible">
                 <div>
                   <div className="text-[9px] font-mono tracking-widest text-[#a78bfa] uppercase mb-4 flex justify-between items-center select-none">
@@ -367,8 +497,20 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
                   )}
                 </div>
               </GlassCard>
-            </div>
+            </motion.div>
 
+          </div>
+
+          {/* Aura Token Airdrop Portal (Claiming + TikTok integration) */}
+          <div className="mb-8">
+            <AuraAirdropPortal 
+              user={user} 
+              onUpdateUser={(updated) => {
+                if (onUpdateUser) {
+                  onUpdateUser(updated);
+                }
+              }} 
+            />
           </div>
 
           {/* Why Is My Score This & AI Recommendation Coach block */}
@@ -593,69 +735,131 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
             <div className="lg:col-span-5 flex flex-col gap-6">
               
               {/* Daily Streak visual component */}
-              <GlassCard className="p-5 md:p-6">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[9px] font-mono tracking-widest text-[#fbbf24] uppercase">Holding Streaks</span>
-                  <span className="text-xs font-mono font-bold text-amber-500">{user.streak}-day streak 🔥</span>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                  Consolidated hold limits. Maintain balances without token exits to complete additional cycles.
-                </p>
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <GlassCard className="p-5 md:p-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[9px] font-mono tracking-widest text-[#fbbf24] uppercase">Holding Streaks</span>
+                    <span className="text-xs font-mono font-bold text-amber-500">{user.streak}-day streak 🔥</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                    Consolidated hold limits. Maintain balances without token exits to complete additional cycles.
+                  </p>
 
-                {/* 7 holding days bars */}
-                <div className="flex gap-2">
-                  {Array.from({ length: 7 }).map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="flex-1 h-2 rounded-md transition-all duration-300"
-                      style={{
-                        background: i < (user.streak % 7 || 5) ? '#fbbf24' : 'rgba(255,255,255,0.06)',
-                        boxShadow: i < (user.streak % 7 || 5) ? '0 0 8px rgba(251, 191, 36, 0.45)' : 'none',
-                      }}
-                    />
-                  ))}
-                </div>
-                <div className="flex justify-between items-center mt-2.5 text-[9px] text-slate-500 font-mono uppercase">
-                  <span>Day 1</span>
-                  <span>{user.streak % 7 || 5}/7 completed to next score mult</span>
-                  <span>Day 7</span>
-                </div>
-              </GlassCard>
+                  {/* 7 holding days bars */}
+                  <div className="flex gap-2">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="flex-1 h-2 rounded-md transition-all duration-300"
+                        style={{
+                          background: i < (user.streak % 7 || 5) ? '#fbbf24' : 'rgba(255,255,255,0.06)',
+                          boxShadow: i < (user.streak % 7 || 5) ? '0 0 8px rgba(251, 191, 36, 0.45)' : 'none',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center mt-2.5 text-[9px] text-slate-500 font-mono uppercase">
+                    <span>Day 1</span>
+                    <span>{user.streak % 7 || 5}/7 completed to next score mult</span>
+                    <span>Day 7</span>
+                  </div>
+                </GlassCard>
+              </motion.div>
 
               {/* Dynamic summary chart box */}
-              <GlassCard className="p-5 md:p-6 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-3">Reputation Over Time</div>
-                  <div className="h-[90px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={HISTORICAL_POINTS} margin={{ top: 5, right: 5, left: -40, bottom: -10 }}>
-                        <XAxis dataKey="time" hide />
-                        <Tooltip
-                          contentStyle={{
-                            background: '#04040a',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: '8px',
-                          }}
-                          labelClassName="text-slate-500 font-mono text-[9px]"
-                          itemStyle={{ fontSize: 10, color: '#a78bfa' }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="reputation" 
-                          stroke="#a78bfa" 
-                          strokeWidth={1.5} 
-                          fill="rgba(167, 139, 250, 0.08)" 
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+              <motion.div
+                className="flex-1 flex flex-col"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <GlassCard className="p-5 md:p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <div className="text-[9px] font-mono tracking-widest text-[#a78bfa] uppercase mb-0.5">Reputation Chronology</div>
+                        <h4 className="text-sm font-bold text-white font-mono uppercase tracking-tight select-none">Score Growth</h4>
+                      </div>
+                      
+                      {/* Range Buttons */}
+                      <div className="flex items-center gap-1 bg-white/[0.02] p-0.5 rounded-lg border border-white/[0.04]">
+                        {(['7D', '30D', '90D'] as const).map((tf) => (
+                          <button
+                            key={tf}
+                            onClick={() => setTimeframe(tf)}
+                            className="px-2 py-1 text-[8px] font-bold cursor-pointer rounded transition-all border-none font-mono uppercase select-none"
+                            style={{
+                              background: timeframe === tf ? 'rgba(167, 139, 250, 0.18)' : 'transparent',
+                              color: timeframe === tf ? '#c084fc' : 'rgba(241, 245, 249, 0.35)',
+                            }}
+                          >
+                            {tf}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                <div className="mt-4 pt-3 border-t border-white/[0.04] text-xs text-slate-400 leading-normal flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">↑ +3.5%</span> 
-                  <span>Reputation velocity rising. Your trend matrix is steady.</span>
-                </div>
-              </GlassCard>
+                    <div className="h-[150px] w-full mt-2 relative select-none">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dynTrendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorReputation" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.24}/>
+                              <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.01}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.025)" vertical={false} />
+                          <XAxis 
+                            dataKey="time" 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
+                            dy={5}
+                          />
+                          <YAxis 
+                            domain={['dataMin - 12', 'dataMax + 8']}
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
+                            width={30}
+                          />
+                          <Tooltip
+                            cursor={{ stroke: 'rgba(167, 139, 250, 0.15)', strokeWidth: 1 }}
+                            contentStyle={{
+                              background: '#04040a',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                            }}
+                            labelStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: 8, fontFamily: 'monospace' }}
+                            itemStyle={{ fontSize: 9, color: '#c084fc', fontFamily: 'monospace' }}
+                            formatter={(value: any) => [`${value} Points`, 'Reputation']}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="reputation" 
+                            stroke="#a78bfa" 
+                            strokeWidth={1.5} 
+                            fillOpacity={1}
+                            fill="url(#colorReputation)" 
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-white/[0.04] text-[11px] text-slate-400 leading-normal flex items-start gap-2">
+                    <span className="text-emerald-400 font-bold shrink-0">↑ +{growthPercent}%</span> 
+                    <span>
+                      Reputation grew from <strong className="text-slate-200">{startScore}</strong> to <strong className="text-slate-200">{endScore}</strong> over {timeframe === '7D' ? 'the past 7 days' : timeframe === '30D' ? 'the past month' : 'the past 3 months'}.
+                    </span>
+                  </div>
+                </GlassCard>
+              </motion.div>
 
             </div>
 

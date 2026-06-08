@@ -25,7 +25,7 @@ export default function LanguageSwitcher() {
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-purple-500/35 hover:bg-purple-500/5 text-slate-300 hover:text-white transition-all cursor-pointer outline-none text-xs font-semibold"
+        className="flex items-center gap-1 sm:gap-1.5 px-2 xs:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-purple-500/35 hover:bg-purple-500/5 text-slate-300 hover:text-white transition-all cursor-pointer outline-none text-xs font-semibold"
       >
         <Globe size={13} className="text-purple-400" />
         <span className="font-mono text-[11px] font-bold">{activeLang.flag} {activeLang.code}</span>

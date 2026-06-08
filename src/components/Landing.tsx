@@ -6,6 +6,7 @@ import ScoreChecker from './ScoreChecker';
 
 interface LandingProps {
   onShowConnect: () => void;
+  onShowManifesto: () => void;
 }
 
 // Custom 2D Canvas ambient networking visualizer
@@ -82,7 +83,7 @@ function ParticleField() {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-60" />;
 }
 
-export default function Landing({ onShowConnect }: LandingProps) {
+export default function Landing({ onShowConnect, onShowManifesto }: LandingProps) {
   const [sliderScore, setSliderScore] = useState<number>(780);
   const [showFirstTimeHelp, setShowFirstTimeHelp] = useState<boolean>(false);
   const [activeStep, setActiveStep] = useState<number>(1);
@@ -263,6 +264,13 @@ export default function Landing({ onShowConnect }: LandingProps) {
                 {t('nav.connect')} →
               </button>
               <button
+                onClick={onShowManifesto}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/30 text-[#c084fc] font-extrabold text-sm transition-all cursor-pointer flex items-center justify-center gap-2 outline-none shadow-[0_4px_15px_rgba(167,139,250,0.15)] active:scale-95"
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
+                🔮 Karma Creed (Manifesto)
+              </button>
+              <button
                 onClick={() => {
                   setShowFirstTimeHelp(!showFirstTimeHelp);
                   if (!showFirstTimeHelp) {
@@ -297,7 +305,7 @@ export default function Landing({ onShowConnect }: LandingProps) {
               <div className="relative w-44 h-44 flex items-center justify-center mb-6">
                 
                 {/* SVG circular track with glow */}
-                <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                <svg viewBox="0 0 176 176" className="absolute inset-0 w-full h-full transform -rotate-90">
                   <circle
                     cx="88"
                     cy="88"
@@ -419,6 +427,51 @@ export default function Landing({ onShowConnect }: LandingProps) {
           </div>
         )}
 
+      </div>
+
+      {/* Dynamic Karma Creed Highlight Section */}
+      <div className="max-w-[1080px] mx-auto px-4 sm:px-6 py-8 relative z-10">
+        <div 
+          onClick={onShowManifesto}
+          className="p-5 sm:p-8 bg-gradient-to-r from-purple-950/15 via-[#030308] to-[#14F195]/5 border border-purple-500/20 hover:border-[#14F195]/40 transition-all rounded-[24px] cursor-pointer relative group overflow-hidden shadow-2xl"
+        >
+          {/* Decorative glowing gradient sphere */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-tr from-purple-500/10 to-[#14F195]/5 rounded-full blur-3xl pointer-events-none group-hover:scale-105 transition-transform duration-500" />
+          
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10 text-left">
+            <div className="space-y-2.5 max-w-2xl">
+              <span className="text-[10px] uppercase font-mono tracking-widest text-[#14F195] font-black bg-[#14F195]/10 px-3 py-1 rounded-full border border-[#14F195]/10 inline-block">
+                ✨ Core Doctrine
+              </span>
+              <h2 className="text-xl sm:text-3xl font-extrabold text-[#f8fafc] tracking-tight leading-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
+                What You Do Always Comes Back.
+              </h2>
+              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
+                For the first time, you’re not just holding a token… you’re holding a reflection of your actions. Take the accountability test, monitor patterns of consistency, and elevate your reputation score.
+              </p>
+              <div className="flex flex-wrap gap-2.5 text-slate-500 text-[10px] font-mono uppercase tracking-wider">
+                <span>⚡ Real-Time Tracking</span>
+                <span>•</span>
+                <span>⚖️ Pure Accountability</span>
+                <span>•</span>
+                <span>🔮 Immutable Record</span>
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full md:w-auto">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowManifesto();
+                }}
+                className="w-full md:w-auto px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-[#a78bfa]/40 bg-[#a78bfa]/10 hover:bg-[#a78bfa]/20 text-[#c084fc] font-extrabold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 whitespace-normal sm:whitespace-nowrap shadow-md shadow-purple-500/10"
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
+                🔮 Enter Creed Experience <span className="font-sans font-normal group-hover:translate-x-1.5 transition-transform inline-block">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* VIRAL SCORE CHECK PANEL AND NARRATIVE */}
