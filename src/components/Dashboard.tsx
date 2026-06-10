@@ -6,7 +6,7 @@ import GlassCard from './GlassCard';
 import KarmaRing from './KarmaRing';
 import LiveAnalytics from './LiveAnalytics';
 import Tag from './Tag';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import ShareModal from './ShareModal';
 import ReputationTimeline from './ReputationTimeline';
 import WalletArena from './WalletArena';
@@ -345,27 +345,67 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
             <div className="lg:col-span-7 flex flex-col">
               <GlassCard className="p-6 md:p-8 flex-1">
                 {/* Reputation Quotient Section */}
-                <div className="mb-6 pb-6 border-b border-white/[0.04] flex items-center justify-between">
-                  <div>
-                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Reputation Quotient</span>
-                    <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-2" style={{ fontFamily: '"Syne", sans-serif' }}>
-                      {user.karmaScore}
-                      <span className="text-xs font-mono font-normal text-slate-500">/ 850 PTS</span>
-                    </h2>
+                <div className="mb-6 pb-6 border-b border-white/[0.04]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Reputation Quotient</span>
+                      <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-2" style={{ fontFamily: '"Syne", sans-serif' }}>
+                        {user.karmaScore}
+                        <span className="text-xs font-mono font-normal text-slate-500">/ 850 PTS</span>
+                      </h2>
+                    </div>
+                    <div className="text-right">
+                      <span 
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider transition-all duration-300"
+                        style={{ 
+                          backgroundColor: `${aura.color}15`, 
+                          color: aura.color,
+                          borderColor: `${aura.color}25`,
+                          borderWidth: '1px'
+                        }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: aura.color }} />
+                        {aura.name}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span 
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider transition-all duration-300"
-                      style={{ 
-                        backgroundColor: `${aura.color}15`, 
-                        color: aura.color,
-                        borderColor: `${aura.color}25`,
-                        borderWidth: '1px'
-                      }}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: aura.color }} />
-                      {aura.name}
-                    </span>
+
+                  {/* Real-time Aura Crossing Simulation Controller */}
+                  <div className="bg-[#030308]/60 p-3 rounded-xl border border-white/[0.03] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left select-none">
+                    <div>
+                      <span className="text-[8px] font-mono text-slate-500 uppercase font-black block tracking-wider">Aura Change Sandbox Simulator</span>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Toggle ratings below to test the celebratory crossover alert:</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => {
+                          if (onUpdateUser) {
+                            onUpdateUser({
+                              ...user,
+                              karmaScore: Math.max(300, user.karmaScore - 50)
+                            });
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg text-[9px] font-mono font-bold bg-white/[0.02] hover:bg-rose-500/10 border border-white/[0.06] hover:border-rose-500/30 text-rose-400 hover:text-rose-300 transition-all cursor-pointer"
+                        title="Decrease rating by 50 to test descend bracket change"
+                      >
+                        ➖ 50 Pts
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (onUpdateUser) {
+                            onUpdateUser({
+                              ...user,
+                              karmaScore: Math.min(850, user.karmaScore + 50)
+                            });
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg text-[9px] font-mono font-bold bg-[#14F195]/5 hover:bg-[#14F195]/20 border border-[#14F195]/20 hover:border-[#14F195]/50 text-[#14F195] transition-all cursor-pointer"
+                        title="Increase rating by 50 to test ascend level up"
+                      >
+                        ➕ 50 Pts
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -536,6 +576,121 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
           <div className="mb-8">
             <KarmaPulseWidget />
           </div>
+
+          {/* 30-Day Historical Karma Score Growth Line Chart */}
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <GlassCard className="p-6 md:p-8" id="historical-30d-line-chart">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-1.5 h-1.5 rounded-full inline-block bg-[#a78bfa] shadow-[0_0_8px_rgba(167,139,250,0.7)]" />
+                    <span className="text-[9px] font-mono tracking-widest text-[#a78bfa] uppercase font-bold">Comprehensive historical ledger</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-[#f1f5f9] select-none" style={{ fontFamily: "'Syne', sans-serif" }}>
+                    30-Day Historical Reputation Trace
+                  </h3>
+                  <p className="text-slate-400 text-xs max-w-xl">
+                    Dynamic linear validation tracking sovereign trust telemetry, diurnal holds, and compliance consistency over the past 30 days.
+                  </p>
+                </div>
+
+                {/* Micro indicators */}
+                <div className="flex items-center gap-4 bg-[#030308]/60 p-3 rounded-2xl border border-white/[0.03] self-stretch sm:self-auto font-mono text-[10px]">
+                  <div className="text-left">
+                    <span className="text-slate-500 block text-[8px] uppercase font-bold">Initial Trace</span>
+                    <span className="text-slate-300 font-extrabold">
+                      {generateTrendData(user.karmaScore, '30D')[0].reputation} PTS
+                    </span>
+                  </div>
+                  <div className="h-6 w-[1px] bg-white/[0.06]" />
+                  <div className="text-left">
+                    <span className="text-slate-500 block text-[8px] uppercase font-bold">Peak Valuation</span>
+                    <span className="text-emerald-400 font-extrabold">
+                      {user.karmaScore} PTS
+                    </span>
+                  </div>
+                  <div className="h-6 w-[1px] bg-white/[0.06]" />
+                  <div className="text-left">
+                    <span className="text-slate-500 block text-[8px] uppercase font-bold">Trend Status</span>
+                    <span className="text-[#14F195] font-extrabold flex items-center gap-0.5 animate-pulse">
+                      ▲ EXPONENTIAL
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Responsive Line Chart */}
+              <div className="h-[210px] w-full relative bg-[#020206]/85 rounded-2xl p-4 border border-white/[0.05] select-none">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart 
+                    data={generateTrendData(user.karmaScore, '30D')} 
+                    margin={{ top: 10, right: 15, left: -25, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.02)" vertical={false} />
+                    <XAxis 
+                      dataKey="time" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
+                      dy={5}
+                    />
+                    <YAxis 
+                      domain={['dataMin - 15', 'dataMax + 10']}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
+                      width={30}
+                    />
+                    <Tooltip
+                      cursor={{ stroke: 'rgba(255, 255, 255, 0.08)', strokeWidth: 1 }}
+                      content={({ active, payload }: any) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          const pointAura = getAura(data.reputation);
+                          return (
+                            <div className="bg-[#04040a]/95 border border-white/[0.08] p-3 rounded-xl shadow-2xl backdrop-blur-md select-none text-left">
+                              <span className="block text-[8px] font-mono text-slate-500 uppercase font-black mb-1">
+                                {data.fullDate}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-mono font-black text-white">{data.reputation}</span>
+                                <span className="text-[8px] font-mono text-slate-400">PTS</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-2 pt-1 border-t border-white/[0.04]">
+                                <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: pointAura.color }} />
+                                <span className="text-[9px] font-mono font-bold uppercase" style={{ color: pointAura.color }}>
+                                  {pointAura.name} Bracket
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="reputation" 
+                      stroke={aura.color} 
+                      strokeWidth={2}
+                      activeDot={{ r: 5, stroke: '#ffffff', strokeWidth: 1.5, fill: aura.color }} 
+                      dot={{ r: 2, fill: 'rgba(255, 255, 255, 0.15)', stroke: 'transparent' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-white/[0.04] text-[10px] text-slate-300/40 font-mono flex flex-col sm:flex-row justify-between items-center gap-2">
+                <span>RECHARTS CORE ENGINE v2.10</span>
+                <span>DATA SYNCHRONIZED DIRECTLY FROM SOVEREIGN IDENTITY WORKSPACE</span>
+              </div>
+            </GlassCard>
+          </motion.div>
 
           {/* Main Reputation Grid */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">

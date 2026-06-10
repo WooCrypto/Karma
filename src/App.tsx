@@ -15,6 +15,8 @@ import WhitepaperModal from './components/WhitepaperModal';
 import KarmaManifestoModal from './components/KarmaManifestoModal';
 import InstallPromptHelper from './components/InstallPromptHelper';
 import { getAura } from './constants';
+import { Aura } from './types';
+import AuraToastNotification from './components/AuraToastNotification';
 
 // Standard typography imports are now natively declared in index.html for high-efficiency loading.
 
@@ -164,6 +166,31 @@ export default function App() {
   const [showWhitepaper, setShowWhitepaper] = useState(false);
   const [showManifesto, setShowManifesto] = useState(true);
   const [showInstallHelper, setShowInstallHelper] = useState(false);
+
+  // States to track Aura updates in real-time
+  const [prevAura, setPrevAura] = useState<Aura | null>(null);
+  const [currAura, setCurrAura] = useState<Aura | null>(null);
+  const [toastTriggerKey, setToastTriggerKey] = useState<number>(0);
+  const [lastScore, setLastScore] = useState<number | null>(null);
+
+  // Monitor score transitions and fire the Aura Ascension Toast when crossing brackets
+  useEffect(() => {
+    if (user) {
+      const currentScore = user.karmaScore;
+      if (lastScore !== null && lastScore !== currentScore) {
+        const oldA = getAura(lastScore);
+        const newA = getAura(currentScore);
+        if (oldA.name !== newA.name) {
+          setPrevAura(oldA);
+          setCurrAura(newA);
+          setToastTriggerKey(prev => prev + 1);
+        }
+      }
+      setLastScore(currentScore);
+    } else {
+      setLastScore(null);
+    }
+  }, [user?.karmaScore]);
 
   // Load session persistence securely from localStorage
   useEffect(() => {
@@ -383,6 +410,17 @@ export default function App() {
           onClose={() => setShowInstallHelper(false)}
         />
       )}
+
+      {/* Aura Crossing Celebration Toast Overlay */}
+      <AuraToastNotification
+        prevAura={prevAura}
+        currAura={currAura}
+        triggerKey={toastTriggerKey}
+        onClose={() => {
+          setPrevAura(null);
+          setCurrAura(null);
+        }}
+      />
     </div>
   );
 }
