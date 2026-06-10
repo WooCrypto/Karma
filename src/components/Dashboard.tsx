@@ -12,6 +12,7 @@ import ReputationTimeline from './ReputationTimeline';
 import WalletArena from './WalletArena';
 import KastBooster from './KastBooster';
 import AuraAirdropPortal from './AuraAirdropPortal';
+import KarmaPulseWidget from './KarmaPulseWidget';
 
 interface DashboardProps {
   user: User;
@@ -337,6 +338,205 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
         />
       ) : (
         <>
+          {/* Interactive Categories Chart and Live Changes Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+            
+            {/* Left Column: 5 Behavioral Pillars */}
+            <div className="lg:col-span-7 flex flex-col">
+              <GlassCard className="p-6 md:p-8 flex-1">
+                {/* Reputation Quotient Section */}
+                <div className="mb-6 pb-6 border-b border-white/[0.04] flex items-center justify-between">
+                  <div>
+                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Reputation Quotient</span>
+                    <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-2" style={{ fontFamily: '"Syne", sans-serif' }}>
+                      {user.karmaScore}
+                      <span className="text-xs font-mono font-normal text-slate-500">/ 850 PTS</span>
+                    </h2>
+                  </div>
+                  <div className="text-right">
+                    <span 
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider transition-all duration-300"
+                      style={{ 
+                        backgroundColor: `${aura.color}15`, 
+                        color: aura.color,
+                        borderColor: `${aura.color}25`,
+                        borderWidth: '1px'
+                      }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: aura.color }} />
+                      {aura.name}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-6">Behavioral Blueprint</div>
+                
+                <div className="space-y-5">
+                  {cats.map((c) => (
+                    <div key={c.label}>
+                      <div className="flex justify-between items-center text-xs mb-1.5">
+                        <span className="flex items-center gap-2 text-slate-300 font-medium">
+                          <span style={{ color: c.color }}>{c.icon}</span> {c.label}
+                        </span>
+                        <span className="font-mono font-bold" style={{ color: c.color }}>{c.value}/100</span>
+                      </div>
+                      
+                      {/* Bar Track */}
+                      <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden relative border border-white/[0.01]">
+                        <div 
+                          className="h-full rounded-full transition-all duration-1000 ease-out" 
+                          style={{ 
+                            width: `${c.value}%`, 
+                            background: `linear-gradient(90deg, ${c.color}20, ${c.color})`, 
+                            boxShadow: `0 0 10px ${c.color}80` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            </div>
+
+            {/* Right Column: Mini Trend Chart and Logs */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              
+              {/* Daily Streak visual component */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <GlassCard className="p-5 md:p-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[9px] font-mono tracking-widest text-[#fbbf24] uppercase">Holding Streaks</span>
+                    <span className="text-xs font-mono font-bold text-amber-500">{user.streak}-day streak 🔥</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                    Consolidated hold limits. Maintain balances without token exits to complete additional cycles.
+                  </p>
+
+                  {/* 7 holding days bars */}
+                  <div className="flex gap-2">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="flex-1 h-2 rounded-md transition-all duration-300"
+                        style={{
+                          background: i < (user.streak % 7 || 5) ? '#fbbf24' : 'rgba(255,255,255,0.06)',
+                          boxShadow: i < (user.streak % 7 || 5) ? '0 0 8px rgba(251, 191, 36, 0.45)' : 'none',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center mt-2.5 text-[9px] text-slate-500 font-mono uppercase">
+                    <span>Day 1</span>
+                    <span>{user.streak % 7 || 5}/7 completed to next score mult</span>
+                    <span>Day 7</span>
+                  </div>
+                </GlassCard>
+              </motion.div>
+
+              {/* Dynamic summary chart box */}
+              <motion.div
+                className="flex-1 flex flex-col"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <GlassCard className="p-5 md:p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <div className="text-[9px] font-mono tracking-widest text-[#a78bfa] uppercase mb-0.5">Reputation Chronology</div>
+                        <h4 className="text-sm font-bold text-white font-mono uppercase tracking-tight select-none">Score Growth</h4>
+                      </div>
+                      
+                      {/* Range Buttons */}
+                      <div className="flex items-center gap-1 bg-white/[0.02] p-0.5 rounded-lg border border-white/[0.04]">
+                        {(['7D', '30D', '90D'] as const).map((tf) => (
+                          <button
+                            key={tf}
+                            onClick={() => setTimeframe(tf)}
+                            className="px-2 py-1 text-[8px] font-bold cursor-pointer rounded transition-all border-none font-mono uppercase select-none"
+                            style={{
+                              background: timeframe === tf ? 'rgba(167, 139, 250, 0.18)' : 'transparent',
+                              color: timeframe === tf ? '#c084fc' : 'rgba(241, 245, 249, 0.35)',
+                            }}
+                          >
+                            {tf}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="h-[150px] w-full mt-2 relative select-none">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dynTrendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorReputation" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.24}/>
+                              <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.01}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.025)" vertical={false} />
+                          <XAxis 
+                            dataKey="time" 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
+                            dy={5}
+                          />
+                          <YAxis 
+                            domain={['dataMin - 12', 'dataMax + 8']}
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
+                            width={30}
+                          />
+                          <Tooltip
+                            cursor={{ stroke: 'rgba(167, 139, 250, 0.15)', strokeWidth: 1 }}
+                            contentStyle={{
+                              background: '#04040a',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                            }}
+                            labelStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: 8, fontFamily: 'monospace' }}
+                            itemStyle={{ fontSize: 9, color: '#c084fc', fontFamily: 'monospace' }}
+                            formatter={(value: any) => [`${value} Points`, 'Reputation']}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="reputation" 
+                            stroke="#a78bfa" 
+                            strokeWidth={1.5} 
+                            fillOpacity={1}
+                            fill="url(#colorReputation)" 
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-white/[0.04] text-[11px] text-slate-400 leading-normal flex items-start gap-2">
+                    <span className="text-emerald-400 font-bold shrink-0">↑ +{growthPercent}%</span> 
+                    <span>
+                      Reputation grew from <strong className="text-slate-200">{startScore}</strong> to <strong className="text-slate-200">{endScore}</strong> over {timeframe === '7D' ? 'the past 7 days' : timeframe === '30D' ? 'the past month' : 'the past 3 months'}.
+                    </span>
+                  </div>
+                </GlassCard>
+              </motion.div>
+
+            </div>
+
+          </div>
+
+          {/* Real-time D3 Reputation Karma Pulse Widget */}
+          <div className="mb-8">
+            <KarmaPulseWidget />
+          </div>
+
           {/* Main Reputation Grid */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
             
@@ -695,175 +895,6 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
               </div>
             </div>
           </GlassCard>
-
-          {/* Interactive Categories Chart and Live Changes Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-            
-            {/* Left Column: 5 Behavioral Pillars */}
-            <div className="lg:col-span-7 flex flex-col">
-              <GlassCard className="p-6 md:p-8 flex-1">
-                <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-6">Behavioral Blueprint</div>
-                
-                <div className="space-y-5">
-                  {cats.map((c) => (
-                    <div key={c.label}>
-                      <div className="flex justify-between items-center text-xs mb-1.5">
-                        <span className="flex items-center gap-2 text-slate-300 font-medium">
-                          <span style={{ color: c.color }}>{c.icon}</span> {c.label}
-                        </span>
-                        <span className="font-mono font-bold" style={{ color: c.color }}>{c.value}/100</span>
-                      </div>
-                      
-                      {/* Bar Track */}
-                      <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden relative border border-white/[0.01]">
-                        <div 
-                          className="h-full rounded-full transition-all duration-1000 ease-out" 
-                          style={{ 
-                            width: `${c.value}%`, 
-                            background: `linear-gradient(90deg, ${c.color}20, ${c.color})`, 
-                            boxShadow: `0 0 10px ${c.color}80` 
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </GlassCard>
-            </div>
-
-            {/* Right Column: Mini Trend Chart and Logs */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              
-              {/* Daily Streak visual component */}
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <GlassCard className="p-5 md:p-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-[9px] font-mono tracking-widest text-[#fbbf24] uppercase">Holding Streaks</span>
-                    <span className="text-xs font-mono font-bold text-amber-500">{user.streak}-day streak 🔥</span>
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                    Consolidated hold limits. Maintain balances without token exits to complete additional cycles.
-                  </p>
-
-                  {/* 7 holding days bars */}
-                  <div className="flex gap-2">
-                    {Array.from({ length: 7 }).map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="flex-1 h-2 rounded-md transition-all duration-300"
-                        style={{
-                          background: i < (user.streak % 7 || 5) ? '#fbbf24' : 'rgba(255,255,255,0.06)',
-                          boxShadow: i < (user.streak % 7 || 5) ? '0 0 8px rgba(251, 191, 36, 0.45)' : 'none',
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex justify-between items-center mt-2.5 text-[9px] text-slate-500 font-mono uppercase">
-                    <span>Day 1</span>
-                    <span>{user.streak % 7 || 5}/7 completed to next score mult</span>
-                    <span>Day 7</span>
-                  </div>
-                </GlassCard>
-              </motion.div>
-
-              {/* Dynamic summary chart box */}
-              <motion.div
-                className="flex-1 flex flex-col"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <GlassCard className="p-5 md:p-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <div>
-                        <div className="text-[9px] font-mono tracking-widest text-[#a78bfa] uppercase mb-0.5">Reputation Chronology</div>
-                        <h4 className="text-sm font-bold text-white font-mono uppercase tracking-tight select-none">Score Growth</h4>
-                      </div>
-                      
-                      {/* Range Buttons */}
-                      <div className="flex items-center gap-1 bg-white/[0.02] p-0.5 rounded-lg border border-white/[0.04]">
-                        {(['7D', '30D', '90D'] as const).map((tf) => (
-                          <button
-                            key={tf}
-                            onClick={() => setTimeframe(tf)}
-                            className="px-2 py-1 text-[8px] font-bold cursor-pointer rounded transition-all border-none font-mono uppercase select-none"
-                            style={{
-                              background: timeframe === tf ? 'rgba(167, 139, 250, 0.18)' : 'transparent',
-                              color: timeframe === tf ? '#c084fc' : 'rgba(241, 245, 249, 0.35)',
-                            }}
-                          >
-                            {tf}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="h-[150px] w-full mt-2 relative select-none">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={dynTrendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="colorReputation" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.24}/>
-                              <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.01}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.025)" vertical={false} />
-                          <XAxis 
-                            dataKey="time" 
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
-                            dy={5}
-                          />
-                          <YAxis 
-                            domain={['dataMin - 12', 'dataMax + 8']}
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: 'rgba(255, 255, 255, 0.3)', fontSize: 8, fontFamily: 'monospace' }}
-                            width={30}
-                          />
-                          <Tooltip
-                            cursor={{ stroke: 'rgba(167, 139, 250, 0.15)', strokeWidth: 1 }}
-                            contentStyle={{
-                              background: '#04040a',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              borderRadius: '8px',
-                              padding: '6px 10px',
-                            }}
-                            labelStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: 8, fontFamily: 'monospace' }}
-                            itemStyle={{ fontSize: 9, color: '#c084fc', fontFamily: 'monospace' }}
-                            formatter={(value: any) => [`${value} Points`, 'Reputation']}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="reputation" 
-                            stroke="#a78bfa" 
-                            strokeWidth={1.5} 
-                            fillOpacity={1}
-                            fill="url(#colorReputation)" 
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-white/[0.04] text-[11px] text-slate-400 leading-normal flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold shrink-0">↑ +{growthPercent}%</span> 
-                    <span>
-                      Reputation grew from <strong className="text-slate-200">{startScore}</strong> to <strong className="text-slate-200">{endScore}</strong> over {timeframe === '7D' ? 'the past 7 days' : timeframe === '30D' ? 'the past month' : 'the past 3 months'}.
-                    </span>
-                  </div>
-                </GlassCard>
-              </motion.div>
-
-            </div>
-
-          </div>
 
           <ReputationTimeline user={user} />
         </>

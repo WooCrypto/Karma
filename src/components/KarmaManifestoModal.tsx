@@ -71,7 +71,6 @@ export default function KarmaManifestoModal({ isOpen, onClose }: KarmaManifestoM
     }
   };
 
-  if (!isOpen) return null;
 
   const verses = [
     {
@@ -259,23 +258,28 @@ export default function KarmaManifestoModal({ isOpen, onClose }: KarmaManifestoM
 
   return (
     <AnimatePresence>
-      <div 
-        onClick={onClose}
-        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 md:p-10 bg-black/90 backdrop-blur-md cursor-pointer"
-      >
-        
-        {/* Particle / Light Orb Ambient BG inside Modal */}
-        <div className="absolute inset-x-0 top-12 bottom-12 bg-gradient-to-b from-purple-950/15 via-transparent to-emerald-950/10 rounded-3xl filter blur-3xl opacity-60 pointer-events-none" />
-
-        {/* Modal Outer Container */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.94 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-4xl bg-[#030308]/95 border border-white/[0.08] rounded-[20px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col h-[92vh] sm:h-[90vh] md:h-[85vh] text-[#f8fafc] cursor-default"
-          onClick={(e) => e.stopPropagation()}
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 md:p-10 bg-black/90 backdrop-blur-sm cursor-pointer font-sans"
         >
+          
+          {/* Particle / Light Orb Ambient BG inside Modal */}
+          <div className="absolute inset-x-0 top-12 bottom-12 bg-gradient-to-b from-purple-950/15 via-transparent to-emerald-950/10 rounded-3xl filter blur-3xl opacity-60 pointer-events-none" />
+
+          {/* Modal Outer Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="relative w-full max-w-4xl bg-[#030308]/95 border border-white/[0.08] rounded-[20px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col h-[92vh] sm:h-[90vh] md:h-[85vh] text-[#f8fafc] cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
           
           {/* TOP HEADER STATUS & NAVIGATION BAR */}
           <div className="p-4 sm:p-5 border-b border-white/[0.04] flex items-center justify-between bg-slate-950/60 relative z-30">
@@ -508,7 +512,8 @@ export default function KarmaManifestoModal({ isOpen, onClose }: KarmaManifestoM
           </div>
 
         </motion.div>
-      </div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }

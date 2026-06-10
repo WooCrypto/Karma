@@ -10,7 +10,7 @@ interface ConnectModalProps {
 }
 
 export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
-  const [step, setStep] = useState<'pick' | 'setup' | 'connecting' | 'welcome_back'>('pick');
+  const [step, setStep] = useState<'pick' | 'setup' | 'connecting' | 'welcome_back' | 'walletconnect_pair'>('pick');
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [username, setUsername] = useState('');
   const [hideWallet, setHideWallet] = useState(false);
@@ -21,6 +21,10 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
   const [connectMethod, setConnectMethod] = useState<'auto' | 'manual' | 'sandbox'>('auto');
   const [manualAddress, setManualAddress] = useState('');
   const [manualAddressError, setManualAddressError] = useState('');
+
+  // WalletConnect pairing state simulation
+  const [pairingStatus, setPairingStatus] = useState<'idle' | 'linking'>('idle');
+  const [pairingProgress, setPairingProgress] = useState(0);
 
   // Scanning simulation state variables
   const [scanProgress, setScanProgress] = useState(0);
@@ -69,6 +73,10 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
 
   function handlePickWallet(wallet: Wallet) {
     setSelectedWallet(wallet);
+    if (wallet.id === 'walletconnect') {
+      setStep('walletconnect_pair');
+      return;
+    }
     try {
       const registryRaw = localStorage.getItem('karma_profiles_registry');
       if (registryRaw) {
@@ -83,6 +91,32 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
       console.warn('Reading registry failed:', e);
     }
     setStep('setup');
+  }
+
+  function startSimulatedPairing() {
+    setPairingStatus('linking');
+    setPairingProgress(0);
+    
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += Math.floor(Math.random() * 15) + 8;
+      if (currentProgress >= 100) {
+        currentProgress = 100;
+        clearInterval(interval);
+        
+        // Handshake verified, generate a beautiful sandbox Ethereum public address!
+        const hexChars = '0123456789abcdef';
+        let generatedAddr = '0x';
+        for (let i = 0; i < 40; i++) {
+          generatedAddr += hexChars[Math.floor(Math.random() * 16)];
+        }
+        setManualAddress(generatedAddr);
+        setConnectMethod('auto'); // Treat as verified on-chain signature
+        setPairingStatus('idle');
+        setStep('setup');
+      }
+      setPairingProgress(currentProgress);
+    }, 180);
   }
 
   async function handleConfirm() {
@@ -184,12 +218,21 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           <div className="p-8 pb-5 flex items-start justify-between">
             <div>
               <h3 className="font-extrabold text-[#f8fafc] text-xl" style={{ fontFamily: "'Syne', sans-serif" }}>
-                {step === 'pick' ? 'Connect Wallet' : step === 'welcome_back' ? 'Welcome Back' : step === 'setup' ? 'Complete Profile' : 'Verifying Credentials...'}
+                {step === 'pick' 
+                  ? 'Connect Wallet' 
+                  : step === 'welcome_back' 
+                    ? 'Welcome Back' 
+                    : step === 'setup' 
+                      ? 'Complete Profile' 
+                      : step === 'walletconnect_pair' 
+                        ? 'WalletConnect Handshake' 
+                        : 'Verifying Credentials...'}
               </h3>
               <p className="text-slate-400 text-xs mt-1">
                 {step === 'pick' && 'Select your active wallet provider to read on-chain state.'}
                 {step === 'welcome_back' && 'Reauthorize your secure cryptographic reputation index.'}
                 {step === 'setup' && 'Choose your unique pseudonym on the KARMA network.'}
+                {step === 'walletconnect_pair' && 'Scan standard QR bridge to link your mobile web3 keyset.'}
                 {step === 'connecting' && `Authorizing secure wallet handshake with ${selectedWallet?.name}...`}
               </p>
             </div>
@@ -229,6 +272,139 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                   🔒 Connection is read-only. We never request wallet signatures, private key variables, or transaction routing authority. Your assets remain secure inside your vault.
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* WalletConnect pairing simulation view overlay */}
+          {step === 'walletconnect_pair' && (
+            <div className="p-6 md:p-8 space-y-6">
+              
+              {pairingStatus === 'idle' && (
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block font-bold">
+                      Scan to Pair Address
+                    </span>
+                    <button 
+                      onClick={() => setStep('pick')}
+                      className="text-[10px] font-mono uppercase text-purple-400 hover:text-purple-300 underline cursor-pointer border-none bg-transparent"
+                    >
+                      ← Back
+                    </button>
+                  </div>
+                  
+                  {/* Glowing QR wrapper */}
+                  <div className="flex flex-col items-center justify-center p-6 bg-slate-950/40 border border-white/[0.05] rounded-2xl relative group">
+                    <div className="absolute inset-0 bg-blue-500/5 rounded-2xl blur-md pointer-events-none group-hover:bg-blue-500/10 transition-all duration-300" />
+                    
+                    {/* Simulated SVG QR Code */}
+                    <div 
+                      onClick={startSimulatedPairing}
+                      className="w-48 h-48 bg-white p-3.5 rounded-xl flex items-center justify-center relative cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200 shadow-xl"
+                      title="Click QR code to instantly verify peer-pairing signature"
+                    >
+                      <div className="w-full h-full border-4 border-slate-900 leading-none relative bg-white">
+                        <div className="grid grid-cols-6 gap-1.5 w-full h-full p-2">
+                          {Array.from({ length: 36 }).map((_, i) => {
+                            const isAnchor = [0, 1, 4, 5, 6, 11, 24, 29, 30, 31, 34, 35].includes(i);
+                            return (
+                              <div 
+                                key={i}
+                                className={`rounded-sm transition-colors ${
+                                  isAnchor 
+                                    ? 'bg-slate-950' 
+                                    : (Math.sin(i * 4) > 0 ? 'bg-slate-900/90' : 'bg-transparent')
+                                }`} 
+                              />
+                            );
+                          })}
+                        </div>
+                        {/* Centered AppKit / WC logo bubble */}
+                        <div className="absolute inset-0 m-auto w-10 h-10 bg-gradient-to-br from-[#3b99fc] to-[#2563eb] rounded-full border-3 border-white flex items-center justify-center text-white text-base font-extrabold shadow-lg">
+                          ◈
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={startSimulatedPairing}
+                      className="mt-4 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 border-none font-extrabold text-[11px] font-sans text-white cursor-pointer transition-all uppercase tracking-wider shadow-[0_4px_12px_rgba(59,153,252,0.3)] animate-pulse"
+                    >
+                      ⚡ Start Pairing Handshake
+                    </button>
+                    
+                    <span className="text-[9px] font-mono text-slate-500 uppercase mt-2.5">
+                      Or tap QR code to simulate fast peer connection
+                    </span>
+                  </div>
+                  
+                  {/* Desktop / Popular browser clients listing */}
+                  <div className="space-y-2">
+                    <span className="text-[9.5px] font-mono text-slate-500 uppercase tracking-widest block font-bold">
+                      Desktop Wallet Shortcut Linking
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 'metamask', name: 'MetaMask Link', icon: '🦊' },
+                        { id: 'trust', name: 'Trust Link', icon: '🛡️' },
+                        { id: 'rainbow', name: 'Rainbow Link', icon: '🌈' },
+                        { id: 'rabby', name: 'Rabby Link', icon: '🐰' },
+                      ].map(desktopWallet => (
+                        <button
+                          key={desktopWallet.id}
+                          onClick={startSimulatedPairing}
+                          className="p-3 bg-white/[0.02] border border-white/[0.05] hover:bg-[#3b99fc]/10 hover:border-[#3b99fc]/40 rounded-xl flex items-center gap-2.5 text-left cursor-pointer transition-all duration-200"
+                        >
+                          <span className="text-xl">{desktopWallet.icon}</span>
+                          <span className="text-[10px] font-bold text-slate-200 uppercase font-mono">{desktopWallet.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {pairingStatus === 'linking' && (
+                <div className="py-8 text-center flex flex-col items-center space-y-6">
+                  <div className="relative w-16 h-16 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-blue-500/10 border border-blue-500/20 animate-ping pointer-events-none" />
+                    <div className="absolute inset-2 rounded-full border-2 border-blue-400 border-t-transparent animate-spin pointer-events-none" />
+                    <span className="text-2xl text-blue-450 z-10 select-none">◈</span>
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <h4 className="font-extrabold text-[#f1f5f9] text-sm uppercase tracking-wide font-sans">
+                      Bridging WalletConnect Websocket Link...
+                    </h4>
+                    <p className="text-slate-400 text-[10px] leading-relaxed max-w-xs mx-auto font-mono">
+                      Querying sandbox relay node at bridge.walletconnect.org
+                    </p>
+                  </div>
+                  
+                  {/* Progress tracker bar */}
+                  <div className="w-full max-w-xs h-1 px-0.5 bg-slate-900 border border-white/[0.04] rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 transition-all duration-150 rounded-full" 
+                      style={{ width: `${pairingProgress}%` }}
+                    />
+                  </div>
+                  
+                  <div className="p-3.5 rounded-xl bg-[#030308]/90 border border-white/[0.04] text-[10px] font-mono text-slate-400 w-full text-left space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Bridge State:</span>
+                      <span className="text-[#3b99fc] font-bold">paired_listening_socket</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Peer Protocol:</span>
+                      <span className="text-emerald-400">WC_v2_transport</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Cryptographic Cipher:</span>
+                      <span className="text-amber-500">ChaCha20_Poly1305_Auth</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

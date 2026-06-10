@@ -14,6 +14,7 @@ import LanguageSwitcher from './components/LanguageSwitcher';
 import WhitepaperModal from './components/WhitepaperModal';
 import KarmaManifestoModal from './components/KarmaManifestoModal';
 import InstallPromptHelper from './components/InstallPromptHelper';
+import { getAura } from './constants';
 
 // Standard typography imports are now natively declared in index.html for high-efficiency loading.
 
@@ -161,7 +162,7 @@ export default function App() {
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showWhitepaper, setShowWhitepaper] = useState(false);
-  const [showManifesto, setShowManifesto] = useState(false);
+  const [showManifesto, setShowManifesto] = useState(true);
   const [showInstallHelper, setShowInstallHelper] = useState(false);
 
   // Load session persistence securely from localStorage
@@ -172,16 +173,40 @@ export default function App() {
         setUser(JSON.parse(cached));
         setPage('Dashboard');
       }
-
-      // Check if manifesto has been shown/dismissed before in this browsing session
-      const seenThisSession = sessionStorage.getItem('karma_manifesto_session_seen_v2');
-      if (!seenThisSession) {
-        setShowManifesto(true);
-      }
     } catch (err) {
       console.warn('Sandbox localStorage permissions denied, operating with in-memory session rules:', err);
     }
   }, []);
+
+  // Auto scroll to top on page navigation or user connection with multiple scheduled frames to prevent race conditions during rendering
+  useEffect(() => {
+    const triggerScroll = () => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      if (document.body) {
+        document.body.scrollTop = 0;
+      }
+    };
+    
+    // Reset immediately
+    triggerScroll();
+    
+    // Reset on next layout draw
+    requestAnimationFrame(triggerScroll);
+    
+    // Scheduled callbacks to counteract async component expansions
+    const t1 = setTimeout(triggerScroll, 80);
+    const t2 = setTimeout(triggerScroll, 200);
+    const t3 = setTimeout(triggerScroll, 450);
+    const t4 = setTimeout(triggerScroll, 800);
+    
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [page, user]);
 
   function handleConnect(data: { wallet: Wallet; username: string; hideWallet: boolean; address: string }) {
     let profile: User;
@@ -302,6 +327,7 @@ export default function App() {
 
       {/* Modern Global Web3 Footer */}
       <Footer 
+        page={page}
         setPage={setPage} 
         user={user} 
         onShowWhitepaper={() => setShowWhitepaper(true)} 
@@ -362,6 +388,7 @@ export default function App() {
 }
 
 interface FooterProps {
+  page: string;
   setPage: (p: string) => void;
   user: User | null;
   onShowWhitepaper: () => void;
@@ -369,10 +396,126 @@ interface FooterProps {
   onShowInstall: () => void;
 }
 
-function Footer({ setPage, user, onShowWhitepaper, onShowManifesto, onShowInstall }: FooterProps) {
+function Footer({ page, setPage, user, onShowWhitepaper, onShowManifesto, onShowInstall }: FooterProps) {
   const { t } = useLanguage();
+  
+  const aura = user ? getAura(user.karmaScore) : null;
+
+  // Configure custom dynamic content stamp for the footer based on current active tab
+  const getPageKarmaDetails = () => {
+    switch (page) {
+      case 'Dashboard':
+        return {
+          title: 'MY KARMA REP PASSPORT',
+          desc: user 
+            ? `Your decentralized reputation signature is active. @${user.username} is maintaining a score of ${user.karmaScore}/850 within the '${aura?.name || 'Initiate'}' Aura bracket. Your sovereign holding streak has successfully reached ${user.streak} active diurnal cycles.`
+            : `Sovereign reputation ledger initialized. Connect your sandbox keyset to register.`,
+          status: user ? 'VERIFIED' : 'UNREGISTERED',
+          hash: user ? `0x${user.address.substring(2, 6).toUpperCase()}...${user.address.substring(user.address.length - 4).toUpperCase()}` : '0x0000...0000',
+          badge: aura?.badge || 'INIT_CITIZEN',
+          color: aura?.color || '#a78bfa'
+        };
+      case 'Lenders':
+        return {
+          title: 'CREDIT ELIGIBILITY CERTIFICATION',
+          desc: user 
+            ? `Verified credit credentials synced. Your Reputation Quotient of ${user.karmaScore} guarantees pre-qualification under Tier ${user.karmaScore >= 740 ? 'A (Elite)' : 'B (Standard)'} debt routing models. Third-party lending pools can query this index dynamically.`
+            : `Syncing credit credentials. Link your on-chain keyset to begin evaluation.`,
+          status: user ? 'APPROVED' : 'UNVERIFIED',
+          hash: 'LND_SYN_V2',
+          badge: user ? (user.karmaScore >= 740 ? 'TIER_A_ELITE' : 'TIER_B_RELIABLE') : 'CREDIT_INITIAL',
+          color: '#14F195'
+        };
+      case 'Leaderboard':
+        return {
+          title: 'GLOBAL LEDGER INDEX',
+          desc: user 
+            ? `Sandbox directory comparison synced. @${user.username} ranks at ${user.karmaScore} rating amongst the global registry of connected address conviction signatures. Keep holding assets in your sandbox wallet to scale the ranks.`
+            : `Viewing global memory pool. Synchronize your custom profile to join the leaderboard database.`,
+          status: 'REP_RANKED',
+          hash: 'GBL_MEM_V4',
+          badge: 'ACTIVE_LEDGER',
+          color: '#38bdf8'
+        };
+      case 'AI Reading':
+        return {
+          title: 'COGNITIVE WISDOM INSIGHTS',
+          desc: user
+            ? `Diagnostic audit compiled. The Karma AI model has successfully computed velocity ratios and recommended a customized improvement checklist targeted to boost your score to ${user.karmaScore + 65} rating.`
+            : `AI Diagnostic model ready. Initialize reputation telemetry to unlock custom analytics.`,
+          status: 'COMPILED',
+          hash: 'AI_COGN_V1',
+          badge: 'GROWTH_ACTIVE',
+          color: '#fbbf24'
+        };
+      default: // Home or fallback
+        return {
+          title: 'GENESIS NETWORK CORE',
+          desc: user 
+            ? `Connected to sovereign network block. Current reputation metric is ${user.karmaScore}/850 within the '${aura?.name || 'Initiate'}' Aura. Use the navigation buttons above to guide your credit assets.`
+            : `Welcome to the future of undercollateralized trust metadata. Connect your secure Web3 wallet signature to claim your custom handle and initial credit stats.`,
+          status: user ? 'CONNECTED' : 'DISCONNECTED',
+          hash: user ? `0x${user.address.substring(2, 8).toUpperCase()}` : 'SANDBOX_ENV',
+          badge: 'GEN_CITIZEN',
+          color: '#a78bfa'
+        };
+    }
+  };
+
+  const details = getPageKarmaDetails();
+
   return (
     <footer className="border-t border-white/[0.05] bg-[#05050b] text-slate-400 py-12 px-6 sm:px-12 mt-auto select-none" id="global-footer-system">
+      <div className="max-w-[1080px] mx-auto mb-10">
+        {/* Dynamic Page-Aware Karma Footer Stamp */}
+        <div 
+          className="relative rounded-2xl border p-5 bg-[#030308]/60 backdrop-blur-md overflow-hidden transition-all duration-300"
+          style={{ borderColor: `${details.color}25`, boxShadow: `0 0 30px ${details.color}05` }}
+        >
+          {/* Subtle colored glow corner */}
+          <div 
+            className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl opacity-15 pointer-events-none transition-all duration-500"
+            style={{ backgroundColor: details.color }}
+          />
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 relative z-10">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="w-1.5 h-1.5 rounded-full inline-block animate-ping" style={{ backgroundColor: details.color }} />
+                <span className="text-[10px] font-mono tracking-widest uppercase font-bold" style={{ color: details.color }}>
+                  {details.title}
+                </span>
+                <span className="text-[8px] font-mono text-slate-600 bg-white/[0.02] border border-white/[0.04] px-2 py-0.5 rounded uppercase">
+                  PAGE-SENSITIVE FOOTER
+                </span>
+              </div>
+              <p className="text-xs text-slate-450 leading-relaxed max-w-3xl">
+                {details.desc}
+              </p>
+            </div>
+            
+            <div className="flex gap-4 font-mono text-[9px] shrink-0 border-t border-white/[0.04] md:border-t-0 pt-3 md:pt-0 w-full md:w-auto">
+              <div className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border border-white/[0.04] flex flex-col justify-between items-start min-w-[110px]">
+                <span className="text-slate-600 text-[8px] uppercase tracking-wider block mb-1">STAMP_STATUS</span>
+                <span className="font-bold uppercase tracking-tight" style={{ color: details.color }}>
+                  {details.status}
+                </span>
+              </div>
+              <div className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border border-white/[0.04] flex flex-col justify-between items-start min-w-[110px]">
+                <span className="text-slate-600 text-[8px] uppercase tracking-wider block mb-1">PASSPORT_ID</span>
+                <span className="font-bold text-slate-300 font-mono">
+                  {details.badge}
+                </span>
+              </div>
+              <div className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border border-white/[0.04] flex flex-col justify-between items-start min-w-[110px]">
+                <span className="text-slate-600 text-[8px] uppercase tracking-wider block mb-1">SIG_STAMP</span>
+                <span className="font-semibold text-slate-500 font-mono">
+                  {details.hash}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="max-w-[1080px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
         {/* Column 1: Brand & Bio */}
         <div className="md:col-span-5 flex flex-col gap-4">
