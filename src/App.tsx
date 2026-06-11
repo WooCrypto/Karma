@@ -436,6 +436,7 @@ interface FooterProps {
 
 function Footer({ page, setPage, user, onShowWhitepaper, onShowManifesto, onShowInstall }: FooterProps) {
   const { t } = useLanguage();
+  const [hoveredStamp, setHoveredStamp] = useState<number | null>(null);
   
   const aura = user ? getAura(user.karmaScore) : null;
 
@@ -532,19 +533,46 @@ function Footer({ page, setPage, user, onShowWhitepaper, onShowManifesto, onShow
             </div>
             
             <div className="flex gap-4 font-mono text-[9px] shrink-0 border-t border-white/[0.04] md:border-t-0 pt-3 md:pt-0 w-full md:w-auto">
-              <div className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border border-white/[0.04] flex flex-col justify-between items-start min-w-[110px]">
+              <div 
+                className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border flex flex-col justify-between items-start min-w-[110px] cursor-pointer transition-all duration-300"
+                style={{
+                  transform: hoveredStamp === 1 ? 'scale(1.05)' : 'scale(1)',
+                  borderColor: hoveredStamp === 1 ? `${details.color}50` : 'rgba(255, 255, 255, 0.04)',
+                  boxShadow: hoveredStamp === 1 ? `0 0 15px ${details.color}25` : 'none'
+                }}
+                onMouseEnter={() => setHoveredStamp(1)}
+                onMouseLeave={() => setHoveredStamp(null)}
+              >
                 <span className="text-slate-600 text-[8px] uppercase tracking-wider block mb-1">STAMP_STATUS</span>
                 <span className="font-bold uppercase tracking-tight" style={{ color: details.color }}>
                   {details.status}
                 </span>
               </div>
-              <div className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border border-white/[0.04] flex flex-col justify-between items-start min-w-[110px]">
+              <div 
+                className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border flex flex-col justify-between items-start min-w-[110px] cursor-pointer transition-all duration-300"
+                style={{
+                  transform: hoveredStamp === 2 ? 'scale(1.05)' : 'scale(1)',
+                  borderColor: hoveredStamp === 2 ? `${details.color}50` : 'rgba(255, 255, 255, 0.04)',
+                  boxShadow: hoveredStamp === 2 ? `0 0 15px ${details.color}25` : 'none'
+                }}
+                onMouseEnter={() => setHoveredStamp(2)}
+                onMouseLeave={() => setHoveredStamp(null)}
+              >
                 <span className="text-slate-600 text-[8px] uppercase tracking-wider block mb-1">PASSPORT_ID</span>
                 <span className="font-bold text-slate-300 font-mono">
                   {details.badge}
                 </span>
               </div>
-              <div className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border border-white/[0.04] flex flex-col justify-between items-start min-w-[110px]">
+              <div 
+                className="flex-1 md:flex-initial p-3 bg-slate-950/80 rounded-xl border flex flex-col justify-between items-start min-w-[110px] cursor-pointer transition-all duration-300"
+                style={{
+                  transform: hoveredStamp === 3 ? 'scale(1.05)' : 'scale(1)',
+                  borderColor: hoveredStamp === 3 ? `${details.color}50` : 'rgba(255, 255, 255, 0.04)',
+                  boxShadow: hoveredStamp === 3 ? `0 0 15px ${details.color}25` : 'none'
+                }}
+                onMouseEnter={() => setHoveredStamp(3)}
+                onMouseLeave={() => setHoveredStamp(null)}
+              >
                 <span className="text-slate-600 text-[8px] uppercase tracking-wider block mb-1">SIG_STAMP</span>
                 <span className="font-semibold text-slate-500 font-mono">
                   {details.hash}
