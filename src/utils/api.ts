@@ -54,9 +54,12 @@ export async function fetchWithFallback(urlPath: string, options: RequestOptions
         clearTimeout(timeoutId);
 
         // Vercel or cloud gateways return 404 NOT_FOUND for unmapped backend services.
-        // Also catch Cloudflare/Vercel error pages or text responses with NOT_FOUND payloads.
-        if (response.status === 404) {
-          throw new Error(`HTTP 404 Not Found received from ${url}`);
+        // Also catch Cloudflare/Vercel error pages or text responses with HTML/NOT_FOUND payloads.
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+
+        if (response.status === 404 || (!response.ok && !isJson)) {
+          throw new Error(`Upstream error [HTTP ${response.status}] from ${url} (non-API response)`);
         }
 
         // Return successful response immediately

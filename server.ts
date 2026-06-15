@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -68,19 +69,16 @@ function rateLimiter(req: express.Request, res: express.Response, next: express.
 
 app.use(rateLimiter);
 
-// ── SECURITY: CORS Config to allow custom domain requests seamlessly ──
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
-});
+// ── SECURITY: Robust CORS Config to allow custom domain requests seamlessly ──
+app.use(cors({
+  origin: (origin, callback) => {
+    // Dynamic origin matching to support seamless dApp logins across platform previews and custom domains
+    callback(null, origin || true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
 
 // ── SECURITY: Alphanumeric Handle Validation Middleware ──
 function validateProfileInput(username: string): string | null {
