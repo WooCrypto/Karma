@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -26,7 +25,7 @@ dotenv.config();
 
 // Create Express container
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const PORT = 3000;
 
 // Ensure passports_saved directory exists on bootstrap
 const PASSPORTS_DIR = path.join(process.cwd(), 'passports_saved');
@@ -68,17 +67,6 @@ function rateLimiter(req: express.Request, res: express.Response, next: express.
 }
 
 app.use(rateLimiter);
-
-// ── SECURITY: Robust CORS Config to allow custom domain requests seamlessly ──
-app.use(cors({
-  origin: (origin, callback) => {
-    // Dynamic origin matching to support seamless dApp logins across platform previews and custom domains
-    callback(null, origin || true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
-}));
 
 // ── SECURITY: Alphanumeric Handle Validation Middleware ──
 function validateProfileInput(username: string): string | null {
@@ -133,8 +121,7 @@ app.post('/api/auth/challenge', async (req, res) => {
 // ── API Endpoint: Verify Wallet Signature & Sync Profile ──
 app.post('/api/auth/verify', async (req, res) => {
   try {
-    const { address: inputAddress, signature, username, hideWallet, wallet, referrer } = req.body;
-    let address = inputAddress;
+    const { address, signature, username, hideWallet, wallet, referrer } = req.body;
     
     if (!address || !username) {
       return res.status(400).json({ error: 'Address and username specifications are mandatory.' });
@@ -143,22 +130,6 @@ app.post('/api/auth/verify', async (req, res) => {
     const usernameError = validateProfileInput(username);
     if (usernameError) {
       return res.status(400).json({ error: usernameError });
-    }
-
-    // Check if the username is already registered to a different wallet address
-    const normalizedUsername = username.trim().toLowerCase();
-    const allProfiles = await getAllProfiles();
-    const clash = allProfiles.find(
-      p => p && p.username?.toLowerCase() === normalizedUsername && p.address?.toLowerCase() !== address.toLowerCase()
-    );
-    if (clash) {
-      if (signature === 'sandbox_sig') {
-        // Encase the sandbox login recovery flow beautifully. Reclaim the user's previously created address
-        address = clash.address;
-        console.log(`[AUTH] Sandbox account reclaimed existing profile for username: ${normalizedUsername} (${address})`);
-      } else {
-        return res.status(400).json({ error: 'This pseudonym handle is already registered to another wallet.' });
-      }
     }
 
     const isSandboxAddress = address.length !== 42 || !address.toLowerCase().startsWith('0x');
@@ -224,7 +195,7 @@ app.post('/api/auth/verify', async (req, res) => {
         if (profileLower !== selfAddrLower && profileLower !== selfUserLower) {
           const allProfiles = await getAllProfiles();
           const foundReferrer = allProfiles.find(
-            p => p && p.username?.toLowerCase() === profileLower || p && p.address?.toLowerCase() === profileLower
+            p => p.username.toLowerCase() === profileLower || p.address.toLowerCase() === profileLower
           );
 
           if (foundReferrer) {
@@ -280,34 +251,6 @@ app.get('/api/profile/:address', async (req, res) => {
       return res.status(404).json({ error: 'Reputation profile and verification passport not found for this key.' });
     }
     res.json(profile);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── API Endpoint: Retrieve referral history for a username ──
-app.get('/api/referrals/:username', async (req, res) => {
-  try {
-    const { username } = req.params;
-    if (!username) {
-      return res.status(400).json({ error: 'Username parameter is required.' });
-    }
-    const allProfiles = await getAllProfiles();
-    const targetUsername = username.toLowerCase();
-    
-    // Filter profiles that were referred by this username
-    const referrals = allProfiles
-      .filter(p => p.referredBy?.toLowerCase() === targetUsername)
-      .map(p => ({
-        address: p.address,
-        username: p.username,
-        connectedAt: p.connectedAt,
-        karmaScore: p.karmaScore,
-        avatarIcon: p.wallet?.icon || '👤',
-        pointsEarned: 1000,
-      }));
-
-    res.json(referrals);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
