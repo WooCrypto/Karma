@@ -26,7 +26,7 @@ dotenv.config();
 
 // Create Express container
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 // Ensure passports_saved directory exists on bootstrap
 const PASSPORTS_DIR = path.join(process.cwd(), 'passports_saved');
@@ -133,7 +133,8 @@ app.post('/api/auth/challenge', async (req, res) => {
 // ── API Endpoint: Verify Wallet Signature & Sync Profile ──
 app.post('/api/auth/verify', async (req, res) => {
   try {
-    const { address, signature, username, hideWallet, wallet, referrer } = req.body;
+    const { address: inputAddress, signature, username, hideWallet, wallet, referrer } = req.body;
+    let address = inputAddress;
     
     if (!address || !username) {
       return res.status(400).json({ error: 'Address and username specifications are mandatory.' });
@@ -151,7 +152,13 @@ app.post('/api/auth/verify', async (req, res) => {
       p => p && p.username?.toLowerCase() === normalizedUsername && p.address?.toLowerCase() !== address.toLowerCase()
     );
     if (clash) {
-      return res.status(400).json({ error: 'This pseudonym handle is already registered to another wallet.' });
+      if (signature === 'sandbox_sig') {
+        // Encase the sandbox login recovery flow beautifully. Reclaim the user's previously created address
+        address = clash.address;
+        console.log(`[AUTH] Sandbox account reclaimed existing profile for username: ${normalizedUsername} (${address})`);
+      } else {
+        return res.status(400).json({ error: 'This pseudonym handle is already registered to another wallet.' });
+      }
     }
 
     const isSandboxAddress = address.length !== 42 || !address.toLowerCase().startsWith('0x');

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Wallet } from './types';
-import { fetchWithFallback } from './utils/api';
+import { fetchWithFallback, precheckVerifyEndpoint } from './utils/api';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
@@ -275,6 +275,16 @@ export default function App() {
       // Optimistic update of local states to keep interface active
       setUser(updated);
       localStorage.setItem('karma_user_session', JSON.stringify(updated));
+      
+      // Network diagnostic pre-check
+      const checkResult = await precheckVerifyEndpoint();
+      if (!checkResult.reachable) {
+        if (checkResult.status === 404) {
+          throw new Error('Service Unavailable: The reputation index service (/api/auth/verify) returned a 404 Not Found error.');
+        } else {
+          throw new Error(`Service Unavailable: The connection to the indexing server failed. Error: ${checkResult.error || 'Connection timed out'}`);
+        }
+      }
       
       // Update persistent database dynamically with robust fallback and retry handlers
       const response = await fetchWithFallback('/api/auth/verify', {

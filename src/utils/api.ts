@@ -78,3 +78,40 @@ export async function fetchWithFallback(urlPath: string, options: RequestOptions
 
   throw lastError || new Error(`Network failure: Unable to synchronize with reputation index on any server routes.`);
 }
+
+/**
+ * Network diagnostic helper.
+ * Performs a rapid pre-check against the `/api/auth/verify` endpoint
+ * to ensure that the backend is active, mapped, and reachable.
+ */
+export async function precheckVerifyEndpoint(): Promise<{
+  reachable: boolean;
+  status?: number;
+  error?: string;
+}> {
+  try {
+    const response = await fetchWithFallback('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address: '',
+        username: ''
+      }),
+      timeoutMs: 3000
+    });
+    
+    return { reachable: true, status: response.status };
+  } catch (err: any) {
+    const errText = String(err?.message || err);
+    console.warn('[Diagnostic Link] Verification precheck caught exception:', errText);
+    
+    // Check if the error is 404
+    const is404 = errText.includes('404');
+    return {
+      reachable: false,
+      status: is404 ? 404 : undefined,
+      error: errText
+    };
+  }
+}
+

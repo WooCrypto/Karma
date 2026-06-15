@@ -3,7 +3,7 @@ import { User, Wallet } from '../types';
 import { WALLETS } from '../constants';
 import GlassCard from './GlassCard';
 import { ShieldCheck, Cpu, Database, Activity, Landmark } from 'lucide-react';
-import { fetchWithFallback } from '../utils/api';
+import { fetchWithFallback, precheckVerifyEndpoint } from '../utils/api';
 
 interface ConnectModalProps {
   onConnect: (data: { wallet: Wallet; username: string; hideWallet: boolean; address: string }) => void;
@@ -18,6 +18,39 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
   const [usernameError, setUsernameError] = useState('');
   const [savedProfile, setSavedProfile] = useState<any | null>(null);
   const [referrer, setReferrer] = useState('');
+
+  // Service health and connectivity diagnostic state variables
+  const [serviceStatus, setServiceStatus] = useState<'checking' | 'available' | 'unavailable_404' | 'unavailable_other'>('checking');
+  const [isRetryingCheck, setIsRetryingCheck] = useState(false);
+
+  async function runServiceDiagnostic(isManualRetry = false) {
+    if (isManualRetry) {
+      setIsRetryingCheck(true);
+    } else {
+      setServiceStatus('checking');
+    }
+    try {
+      const result = await precheckVerifyEndpoint();
+      if (result.reachable) {
+        setServiceStatus('available');
+      } else {
+        if (result.status === 404) {
+          setServiceStatus('unavailable_404');
+        } else {
+          setServiceStatus('unavailable_other');
+        }
+      }
+    } catch (e) {
+      setServiceStatus('unavailable_other');
+    } finally {
+      setIsRetryingCheck(false);
+    }
+  }
+
+  // Run on mount
+  useEffect(() => {
+    runServiceDiagnostic();
+  }, []);
 
   // Auto-populate referrer from URL query params (e.g. ?ref=Satoshi)
   useEffect(() => {
@@ -213,6 +246,20 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
     setStep('connecting');
 
     try {
+      // Prior pre-check to confirm /api/auth/verify endpoint is active & reachable
+      const checkResult = await precheckVerifyEndpoint();
+      if (!checkResult.reachable) {
+        setStep('setup');
+        if (checkResult.status === 404) {
+          setServiceStatus('unavailable_404');
+          setManualAddressError('Service Unavailable: The reputation index service (/api/auth/verify) returned a 404 Not Found error. This usually indicates the server API route is currently down, unmapped, or restarting.');
+        } else {
+          setServiceStatus('unavailable_other');
+          setManualAddressError(`Service Unavailable: The connection to the indexing server failed. Error: ${checkResult.error || 'Connection timed out'}`);
+        }
+        return;
+      }
+
       // Call verify endpoint to compile reputation index on-chain with auto-fallback and retries
       const verifyRes = await fetchWithFallback('/api/auth/verify', {
         method: 'POST',
@@ -315,6 +362,49 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           </div>
 
           <div className="h-[1px] bg-white/[0.06]" />
+
+          {/* Service Health Diagnostic Alert */}
+          {serviceStatus !== 'available' && serviceStatus !== 'checking' && (
+            <div className="mx-6 md:mx-8 mt-5 p-4 rounded-xl border bg-rose-500/5 border-rose-500/25 text-left animate-fade-in space-y-3">
+              <div className="flex items-center gap-2.5 text-rose-400">
+                <span className="text-lg">📢</span>
+                <span className="text-xs font-extrabold uppercase tracking-wider font-mono">
+                  Service Temporarily Unavailable
+                </span>
+              </div>
+              
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-200">
+                  {serviceStatus === 'unavailable_404' 
+                    ? 'EVM Rep Index Node Route Unmapped (HTTP 404)' 
+                    : 'Reputation Node Gateway Connection Error'}
+                </p>
+                <p className="text-[10.5px] text-slate-400 leading-relaxed font-sans">
+                  {serviceStatus === 'unavailable_404' 
+                    ? 'The endpoint /api/auth/verify responded with a 404. The background services are currently starting up, updating, or the API endpoint path is currently inactive.' 
+                    : 'We were unable to verify local connectivity with secure reputation nodes. The blockchain oracle bridge may be down.'}
+                </p>
+              </div>
+
+              <div className="flex gap-2.5 pt-1.5">
+                <button
+                  type="button"
+                  disabled={isRetryingCheck}
+                  onClick={() => runServiceDiagnostic(true)}
+                  className="px-3.5 py-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-rose-100 border border-rose-500/30 text-[10.5px] font-extrabold cursor-pointer transition-all uppercase tracking-wider font-sans disabled:opacity-40"
+                >
+                  {isRetryingCheck ? '⚡ Testing Ingress...' : '🔄 Test Node Ingress'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setServiceStatus('available')}
+                  className="px-3.5 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-slate-400 hover:text-slate-100 border border-white/[0.08] text-[10.5px] font-bold cursor-pointer transition-all uppercase tracking-wider font-sans"
+                >
+                  Bypass offline state
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Wallet List selector */}
           {step === 'pick' && (
