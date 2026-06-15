@@ -180,7 +180,13 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           }
         } catch (err: any) {
           console.warn('Real wallet login attempted but was rejected or unavailable in sandbox environment:', err);
-          setManualAddressError(err?.message || 'Connection rejected by browser extension. Please authorize standard access.');
+          const errStr = String(err?.message || err).toLowerCase();
+          let errorHint = err?.message || String(err);
+          if (errStr.includes('expected pattern') || errStr.includes('atob') || errStr.includes('pattern')) {
+            errorHint = 'Sandbox iframe security rules blocked direct socket connection. Automatically switching you to "🎲 Sandbox ID" mode to sign in instantly!';
+            setConnectMethod('sandbox');
+          }
+          setManualAddressError(errorHint);
           return;
         }
       }
@@ -190,10 +196,10 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
         return;
       }
     } else {
-      // Sandbox Mode: Fallback to high-fidelity simulated production address
+      // Sandbox Mode: Fallback to high-fidelity simulated production address with exact 42 characters (0x + 40 hex chars)
       const hexChars = '0123456789abcdef';
       let hexPart = '';
-      for (let i = 0; i < 36; i++) {
+      for (let i = 0; i < 40; i++) {
         hexPart += hexChars[Math.floor(Math.random() * 16)];
       }
       resolvedAddress = '0x' + hexPart; // produces a real formatted 42-character hex string
@@ -215,14 +221,24 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           return;
         }
         
-        // Request signature
+        // Convert raw challenge text to hex encoding to avoid "The string did not match the expected pattern" in iframe injections
+        const msgBytes = new TextEncoder().encode(challengeData.message);
+        const msgHex = '0x' + Array.from(msgBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // Request signature using the hex message
         signature = await provider.request({
           method: 'personal_sign',
-          params: [challengeData.message, resolvedAddress]
+          params: [msgHex, resolvedAddress]
         });
       } catch (err: any) {
         console.warn('EVM signing rejected or failed:', err);
-        setManualAddressError(err.message || 'Signature rejected by browser extension wallet.');
+        const errStr = String(err?.message || err).toLowerCase();
+        let errorHint = err?.message || String(err);
+        if (errStr.includes('expected pattern') || errStr.includes('atob') || errStr.includes('pattern')) {
+          errorHint = 'Cryptographic handshake blocked by browser security inside sandbox iframe. Automatically switching you to "🎲 Sandbox ID" instead!';
+          setConnectMethod('sandbox');
+        }
+        setManualAddressError(errorHint);
         return;
       }
     }
@@ -649,6 +665,9 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                   <p className="text-[10px] leading-relaxed font-sans">
                     Generate an instant testbed identity. Instantly unlock beautiful stats maps, comprehensive holding records, and live AI reading reports. Perfect for quick preview of client features!
                   </p>
+                  {manualAddressError && (
+                    <p className="text-rose-400 text-[11px] mt-1.5 font-sans font-bold">{manualAddressError}</p>
+                  )}
                 </div>
               )}
 

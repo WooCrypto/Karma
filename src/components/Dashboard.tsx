@@ -87,7 +87,7 @@ const HISTORICAL_POINTS = [
 ];
 
 export default function Dashboard({ user, onDisconnect, onUpdateUser, onNavigatePage }: DashboardProps) {
-  const [subTab, setSubTab] = useState<'Reputation' | 'Activity' | 'Arena' | 'Kast'>('Reputation');
+  const [subTab, setSubTab] = useState<'Reputation' | 'Activity' | 'Arena' | 'Kast' | 'Referral'>('Reputation');
   const [timeframe, setTimeframe] = useState<'7D' | '30D' | '90D'>('7D');
   const [isKastBoosted, setIsKastBoosted] = useState(false);
   const [dashboardTheme, setDashboardTheme] = useState<'space-blue' | 'charcoal-black'>(() => {
@@ -380,6 +380,17 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser, onNavigate
           >
             💳 KAST Debit Booster
           </button>
+          <button
+            onClick={() => setSubTab('Referral')}
+            className="text-xs px-4 py-2.5 rounded-xl transition-all font-semibold border cursor-pointer flex-1 sm:flex-initial text-center"
+            style={{
+              background: subTab === 'Referral' ? 'rgba(167,139,250,0.14)' : 'rgba(255,255,255,0.03)',
+              borderColor: subTab === 'Referral' ? 'rgba(167,139,250,0.3)' : 'rgba(255,255,255,0.08)',
+              color: subTab === 'Referral' ? '#c084fc' : '#94a3b8',
+            }}
+          >
+            👥 Referral Center
+          </button>
           {onDisconnect && (
             <button
               onClick={onDisconnect}
@@ -410,6 +421,268 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser, onNavigate
             }
           }}
         />
+      ) : subTab === 'Referral' ? (
+        <div className="space-y-6 animate-fade-in" id="referrals-section-panel">
+          {/* Top Hero Section */}
+          <GlassCard className="p-6 md:p-8 relative overflow-hidden border border-purple-500/10">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] uppercase font-mono tracking-widest text-[#a78bfa] bg-[#a78bfa]/15 px-2.5 py-0.5 rounded font-black">Sovereign Growth</span>
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-emerald-400 font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" /> Live Aura Multipliers On
+                  </span>
+                </div>
+                <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  Aura Network Ambassador Protocol
+                </h3>
+                <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
+                  Help map the cryptographic web3 identity map. Share your unique link with family, developers, or friends to invite them. They'll generate their own sovereign reputation index, and you will immediately earn <strong className="text-emerald-400">1,000 AURA points</strong> per citizen!
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-950/40 rounded-2xl border border-white/[0.04] text-center w-full md:w-56 shrink-0 flex flex-col justify-center items-center">
+                <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500 block mb-1">YOUR REFERRAL PROFILE</span>
+                <span className="text-2xl font-black text-purple-400 font-mono tracking-tight">
+                  @{user.username}
+                </span>
+                <span className="text-[9px] text-slate-400 mt-1 uppercase font-mono block">Code: {user.username}</span>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Core Analytics Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <GlassCard className="p-6 flex items-center gap-4 border border-white/[0.04]">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-xl text-purple-400 shrink-0 select-none">
+                👥
+              </div>
+              <div>
+                <span className="text-[9px] font-mono uppercase text-slate-500 block">Invited Citizens</span>
+                <span className="text-2xl font-black text-white font-mono leading-none block mt-0.5">
+                  {invitedUsers.length}
+                </span>
+                <span className="text-[10px] text-slate-400 font-sans block mt-0.5">Sovereign ledgers bound</span>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-6 flex items-center gap-4 border border-white/[0.04]">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center text-xl text-emerald-400 shrink-0 select-none">
+                ✨
+              </div>
+              <div>
+                <span className="text-[9px] font-mono uppercase text-slate-500 block">Aura Rewarded</span>
+                <span className="text-2xl font-black text-emerald-400 font-mono leading-none block mt-0.5">
+                  {invitedUsers.reduce((acc, c) => acc + (c.pointsEarned || 1000), 0).toLocaleString()} AURA
+                </span>
+                <span className="text-[10px] text-slate-400 font-sans block mt-0.5">Credited to your balance</span>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-6 flex items-center gap-4 border border-white/[0.04]">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-xl text-amber-400 shrink-0 select-none">
+                🏆
+              </div>
+              <div>
+                <span className="text-[9px] font-mono uppercase text-slate-500 block">Ambassador Rating</span>
+                <span className="text-lg font-black text-amber-400 uppercase leading-none block mt-1">
+                  {invitedUsers.length >= 5 ? 'Legendary' : invitedUsers.length >= 2 ? 'Eminent' : 'Initiate'}
+                </span>
+                <span className="text-[10px] text-slate-400 font-sans block mt-1">
+                  {invitedUsers.length >= 5 ? 'Aura booster 2.0x active' : 'Earn 1000 pts per verified check'}
+                </span>
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* Invitation Copy Cards Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 flex">
+              <GlassCard className="p-6 flex flex-col justify-between flex-1 border border-white/[0.05]">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                      <span>🔗</span> Share Invites
+                    </h4>
+                    <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+                      Copy your customized, secure referral link or plain alphanumeric referral code to your device clipboard instantly.
+                    </p>
+                  </div>
+
+                  {/* Direct Link Panel */}
+                  <div className="space-y-2 pt-2">
+                    <label className="text-[10px] font-mono uppercase text-slate-500 block font-bold">
+                      Direct Referral Link
+                    </label>
+                    <div className="flex bg-slate-950/80 p-1.5 rounded-xl border border-white/[0.05] items-center justify-between gap-1">
+                      <span className="text-[10.5px] font-mono text-slate-400 truncate pl-2 max-w-[180px] xs:max-w-xs">
+                        {typeof window !== 'undefined' ? `${window.location.origin}/?ref=${encodeURIComponent(user.username)}` : `https://karma-ai.app/?ref=${user.username}`}
+                      </span>
+                      <button
+                        onClick={() => {
+                          const url = typeof window !== 'undefined' ? `${window.location.origin}/?ref=${encodeURIComponent(user.username)}` : `https://karma-ai.app/?ref=${user.username}`;
+                          if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(url);
+                          } else {
+                            const t = document.createElement('textarea');
+                            t.value = url;
+                            document.body.appendChild(t);
+                            t.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(t);
+                          }
+                          setCopiedDirectLink(true);
+                          setTimeout(() => setCopiedDirectLink(false), 2000);
+                        }}
+                        className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                          copiedDirectLink 
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                            : 'bg-purple-500/10 hover:bg-purple-500/20 text-[#a78bfa] border border-purple-500/20'
+                        }`}
+                      >
+                        {copiedDirectLink ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" /> Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" /> Copy Link
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Plain Referral Code */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-mono uppercase text-slate-500 block font-bold">
+                      Plain Alphanumeric Code
+                    </label>
+                    <div className="flex bg-slate-950/80 p-1.5 rounded-xl border border-white/[0.05] items-center justify-between gap-1">
+                      <span className="text-xs font-mono font-bold text-[#c084fc] pl-2.5">
+                        {user.username}
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(user.username);
+                          } else {
+                            const t = document.createElement('textarea');
+                            t.value = user.username;
+                            document.body.appendChild(t);
+                            t.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(t);
+                          }
+                          setCopiedDirectCode(true);
+                          setTimeout(() => setCopiedDirectCode(false), 2000);
+                        }}
+                        className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                          copiedDirectCode 
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                            : 'bg-white/[0.05] hover:bg-white/[0.1] text-white border border-white/[0.1]'
+                        }`}
+                      >
+                        {copiedDirectCode ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" /> Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" /> Copy Code
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[9.5px] text-slate-500 font-mono mt-4 leading-normal">
+                  💡 <strong>No Requirement Hook:</strong> Users don’t have to enter a referral code to sign up. They can bypass verification fields completely to access. However, using a valid code grants you AURA.
+                </div>
+              </GlassCard>
+            </div>
+
+            {/* Detailed Referral History Table Card */}
+            <div className="lg:col-span-7 flex">
+              <GlassCard className="p-6 md:p-8 flex flex-col justify-between flex-1 border border-white/[0.05]">
+                <div className="w-full">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/[0.05]">
+                    <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                      <span>📜</span> Invited Users & Referral History
+                    </h4>
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono tracking-wider font-bold bg-purple-500/10 text-[#c084fc] border border-purple-500/25">
+                      {invitedUsers.length} Recorded
+                    </span>
+                  </div>
+
+                  {loadingInvites ? (
+                    <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 rounded-full border-4 border-purple-500/20 border-t-purple-500 animate-spin" />
+                      <span className="text-xs text-slate-400 font-mono">Quering index database...</span>
+                    </div>
+                  ) : invitedUsers.length === 0 ? (
+                    <div className="py-10 text-center space-y-3">
+                      <div className="text-3xl select-none">🏜️</div>
+                      <h5 className="text-xs font-bold text-slate-300">No referrals recorded yet</h5>
+                      <p className="text-[10px] text-slate-500 max-w-sm mx-auto leading-normal">
+                        Your direct ledger stands empty on the decentralized network. Share your special invitation link above to populate your team roster and accumulate Aura!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto w-full">
+                      <table className="w-full text-justify text-xs font-mono border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/[0.04] text-[9.5px] text-slate-500 uppercase tracking-wider">
+                            <th className="py-2.5 text-left font-bold">User / Address</th>
+                            <th className="py-2.5 text-left font-bold">Check-In Date</th>
+                            <th className="py-2.5 text-right font-bold">Karma score</th>
+                            <th className="py-2.5 text-right font-bold">Earned</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.03] text-[11px] text-slate-300">
+                          {invitedUsers.map((item, index) => (
+                            <tr key={index} className="hover:bg-white/[0.01]">
+                              <td className="py-3 text-left">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-base select-none shrink-0">{item.avatarIcon || '👤'}</span>
+                                  <div>
+                                    <span className="text-slate-100 font-bold block">@{item.username}</span>
+                                    <span className="text-[9.5px] text-slate-500 block mt-0.5">
+                                      {item.address.length > 20 ? `${item.address.slice(0, 6)}...${item.address.slice(-4)}` : item.address}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 text-left text-slate-400 text-[10px]">
+                                {new Date(item.connectedAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </td>
+                              <td className="py-3 text-right">
+                                <span className="font-bold text-purple-400 font-mono">
+                                  {item.karmaScore} pts
+                                </span>
+                              </td>
+                              <td className="py-3 text-right">
+                                <span className="px-2 py-0.5 rounded font-bold text-[9.5px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">
+                                  +{item.pointsEarned || 1000} Aura
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           {/* Interactive Categories Chart and Live Changes Row */}

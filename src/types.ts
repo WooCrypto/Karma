@@ -41,6 +41,7 @@ export interface User {
   referralPoints?: number;
   referralsCount?: number;
   referredBy?: string;
+  referredUsers?: { username: string; address: string; earned: number; registeredAt: string }[];
   activities?: ActivityEvent[];
   categories?: { label: string; value: number; color: string; icon: string }[];
 }

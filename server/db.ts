@@ -66,6 +66,7 @@ export interface UserProfile {
   referralPoints?: number;
   referralsCount?: number;
   referredBy?: string;
+  referredUsers?: { username: string; address: string; earned: number; registeredAt: string }[];
   activities: any[];
   categories: { label: string; value: number; color: string; icon: string }[];
   scores: {
