@@ -1,56 +1,86 @@
 {
-  "address": "0x2170ed0880ac9a755fd29b2688956bd959f933f8",
   "username": "hhhyyy",
-  "hideWallet": false,
-  "wallet": {
-    "id": "metamask",
-    "name": "MetaMask",
-    "icon": "🦊",
-    "color": "#f6851b",
-    "desc": "Browser Wallet"
-  },
-  "streak": 10,
   "connectedAt": "2026-06-15T14:03:17.202Z",
-  "karmaScore": 750,
   "personality": "Pioneer",
-  "auraPoints": 221,
-  "lastClaimedAt": "",
-  "activities": [
+  "address": "0x2170ed0880ac9a755fd29b2688956bd959f933f8",
+  "history": [
     {
-      "id": "tx-real-9671-1",
-      "timestamp": "Just now",
-      "type": "Stake",
-      "txHash": "0x2170...7807",
-      "amount": 5.7,
-      "asset": "USDT",
-      "scoreDelta": 3,
-      "patienceImpact": 1,
-      "loyaltyImpact": 3,
-      "wisdomImpact": 2
+      "time": "Jun 10",
+      "gasSaved": 0.025,
+      "activityVolume": 6,
+      "reputation": 708
     },
     {
+      "gasSaved": 0.04,
+      "time": "Jun 11",
+      "reputation": 717,
+      "activityVolume": 7
+    },
+    {
+      "activityVolume": 8,
+      "reputation": 726,
+      "time": "Jun 12",
+      "gasSaved": 0.055
+    },
+    {
+      "reputation": 735,
+      "activityVolume": 9,
+      "time": "Jun 13",
+      "gasSaved": 0.07
+    },
+    {
+      "time": "Jun 14",
+      "gasSaved": 0.085,
+      "activityVolume": 10,
+      "reputation": 744
+    }
+  ],
+  "scores": {
+    "holdingBehavior": 85,
+    "txQuality": 85,
+    "governance": 91,
+    "community": 76,
+    "protocolRep": 100,
+    "walletAge": 85,
+    "staking": 10
+  },
+  "auraPoints": 221,
+  "activities": [
+    {
+      "txHash": "0x2170...7807",
+      "loyaltyImpact": 3,
+      "asset": "USDT",
+      "patienceImpact": 1,
+      "wisdomImpact": 2,
+      "amount": 5.7,
+      "scoreDelta": 3,
+      "timestamp": "Just now",
+      "type": "Stake",
+      "id": "tx-real-9671-1"
+    },
+    {
+      "scoreDelta": 4,
+      "amount": 8.9,
       "id": "tx-real-9671-2",
       "timestamp": "5h ago",
       "type": "Mint",
-      "txHash": "0x2170...7932",
-      "amount": 8.9,
-      "asset": "ARB",
-      "scoreDelta": 4,
       "patienceImpact": 3,
+      "wisdomImpact": 2,
+      "txHash": "0x2170...7932",
       "loyaltyImpact": 3,
-      "wisdomImpact": 2
+      "asset": "ARB"
     },
     {
-      "id": "tx-real-9671-3",
-      "timestamp": "2d ago",
-      "type": "Vote",
-      "txHash": "0x2170...8263",
-      "amount": 130,
       "asset": "OP",
-      "scoreDelta": 1,
-      "patienceImpact": 1,
       "loyaltyImpact": 2,
-      "wisdomImpact": 2
+      "txHash": "0x2170...8263",
+      "wisdomImpact": 2,
+      "patienceImpact": 1,
+      "type": "Vote",
+      "timestamp": "2d ago",
+      "id": "tx-real-9671-3",
+      "amount": 130,
+      "scoreDelta": 1
     }
   ],
   "categories": [
@@ -61,82 +91,52 @@
       "icon": "◈"
     },
     {
-      "label": "Loyalty",
-      "value": 85,
+      "icon": "◆",
       "color": "#60a5fa",
-      "icon": "◆"
+      "value": 85,
+      "label": "Loyalty"
     },
     {
-      "label": "Wisdom",
-      "value": 85,
+      "icon": "⊕",
       "color": "#fbbf24",
-      "icon": "⊕"
+      "value": 85,
+      "label": "Wisdom"
     },
     {
       "label": "Generosity",
-      "value": 10,
+      "icon": "⬡",
       "color": "#34d399",
-      "icon": "⬡"
+      "value": 10
     },
     {
-      "label": "Energy",
-      "value": 91,
+      "icon": "◉",
       "color": "#f472b6",
-      "icon": "◉"
+      "value": 91,
+      "label": "Energy"
     }
   ],
-  "scores": {
-    "walletAge": 85,
-    "holdingBehavior": 85,
-    "txQuality": 85,
-    "staking": 10,
-    "governance": 91,
-    "community": 76,
-    "protocolRep": 100
-  },
+  "karmaScore": 750,
   "metrics": {
-    "firstTxDate": "2023-12-27",
-    "walletAgeDays": 901,
-    "totalTransactions": 426,
     "activeDays": 191,
     "tokenBalancesUSD": 15721,
+    "daoVotes": 19,
+    "walletAgeDays": 901,
+    "earlyMintsCount": 7,
+    "stakedDurationDays": 0,
+    "totalTransactions": 426,
     "nftCount": 1,
     "stakedAmountUSD": 0,
-    "stakedDurationDays": 0,
-    "daoVotes": 19,
-    "earlyMintsCount": 7,
+    "firstTxDate": "2023-12-27",
     "riskInteractionsCount": 0
   },
-  "history": [
-    {
-      "time": "Jun 10",
-      "reputation": 708,
-      "activityVolume": 6,
-      "gasSaved": 0.025
-    },
-    {
-      "time": "Jun 11",
-      "reputation": 717,
-      "activityVolume": 7,
-      "gasSaved": 0.04
-    },
-    {
-      "time": "Jun 12",
-      "reputation": 726,
-      "activityVolume": 8,
-      "gasSaved": 0.055
-    },
-    {
-      "time": "Jun 13",
-      "reputation": 735,
-      "activityVolume": 9,
-      "gasSaved": 0.07
-    },
-    {
-      "time": "Jun 14",
-      "reputation": 744,
-      "activityVolume": 10,
-      "gasSaved": 0.085
-    }
-  ]
+  "lastClaimedAt": "",
+  "wallet": {
+    "color": "#f6851b",
+    "name": "MetaMask",
+    "icon": "🦊",
+    "id": "metamask",
+    "desc": "Browser Wallet"
+  },
+  "streak": 10,
+  "hideWallet": false
 }

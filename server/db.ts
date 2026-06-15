@@ -372,6 +372,10 @@ export async function getAllProfiles(): Promise<UserProfile[]> {
     const snap = await withTimeout(getDocs(collection(db, 'profiles')), 4000);
     snap.forEach((doc) => {
       const profile = doc.data() as UserProfile;
+      if (!profile || !profile.address) {
+        console.warn(`[DB] Skipping malformed profile doc ${doc.id}`);
+        return;
+      }
       const normalized = profile.address.toLowerCase();
       indexMap.set(normalized, profile);
       saveProfileLocal(normalized, profile);
