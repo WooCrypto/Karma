@@ -38,6 +38,9 @@ export interface User {
   personality?: string;
   auraPoints?: number;
   lastClaimedAt?: string;
+  referralPoints?: number;
+  referralsCount?: number;
+  referredBy?: string;
   activities?: ActivityEvent[];
   categories?: { label: string; value: number; color: string; icon: string }[];
 }

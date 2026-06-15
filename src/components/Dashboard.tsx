@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Share2, UserPlus, Copy, Check, Users, Award, ExternalLink } from 'lucide-react';
 import { User } from '../types';
+import NavigationVideo from './NavigationVideo';
 import { getAura, PERSONALITIES, truncateWallet } from '../constants';
 import GlassCard from './GlassCard';
 import KarmaRing from './KarmaRing';
@@ -18,6 +20,7 @@ interface DashboardProps {
   user: User;
   onDisconnect?: () => void;
   onUpdateUser?: (updated: User) => void;
+  onNavigatePage?: (page: string) => void;
 }
 
 interface Category {
@@ -45,7 +48,7 @@ const generateTrendData = (currentScore: number, tf: '7D' | '30D' | '90D') => {
     const wiggle = Math.sin(fraction * Math.PI * 4) * 0.012 * (1 - fraction); 
     
     const computed = Math.round(currentScore * (startingPercent + progress * growthSpan + wiggle));
-    const scoreVal = Math.max(300, Math.min(850, computed));
+    const scoreVal = Math.max(0, Math.min(1000, computed));
     
     const d = new Date();
     d.setDate(now.getDate() - (daysCount - 1 - i));
@@ -83,7 +86,7 @@ const HISTORICAL_POINTS = [
   { time: 'Today', reputation: 779 },
 ];
 
-export default function Dashboard({ user, onDisconnect, onUpdateUser }: DashboardProps) {
+export default function Dashboard({ user, onDisconnect, onUpdateUser, onNavigatePage }: DashboardProps) {
   const [subTab, setSubTab] = useState<'Reputation' | 'Activity' | 'Arena' | 'Kast'>('Reputation');
   const [timeframe, setTimeframe] = useState<'7D' | '30D' | '90D'>('7D');
   const [isKastBoosted, setIsKastBoosted] = useState(false);
@@ -96,6 +99,22 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
     }
   });
 
+  // Dynamic interactive sequence tooltips for first-time users
+  const [tourActive, setTourActive] = useState<boolean>(false);
+  const [tourStep, setTourStep] = useState<number>(1);
+
+  useEffect(() => {
+    try {
+      const completed = localStorage.getItem('karma_dashboard_tour_completed');
+      if (completed !== 'true') {
+        // Automatically start tour for first-time dashboard visitors
+        setTourActive(true);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }, []);
+
   useEffect(() => {
     try {
       setIsKastBoosted(localStorage.getItem('kast_booster_active') === 'true');
@@ -106,6 +125,34 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
 
   const [showShare, setShowShare] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
+  const [showTutorialVideo, setShowTutorialVideo] = useState<boolean>(false);
+  
+  // Referral System States
+  const [invitedUsers, setInvitedUsers] = useState<any[]>([]);
+  const [copiedDirectCode, setCopiedDirectCode] = useState(false);
+  const [copiedDirectLink, setCopiedDirectLink] = useState(false);
+  const [loadingInvites, setLoadingInvites] = useState(false);
+
+  useEffect(() => {
+    if (user && user.username) {
+      setLoadingInvites(true);
+      fetch(`/api/referrals/${encodeURIComponent(user.username)}`)
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('Failed to load referrals');
+        })
+        .then(data => {
+          setInvitedUsers(data);
+        })
+        .catch(err => {
+          console.error('[REFERRALS] Loader failed:', err);
+        })
+        .finally(() => {
+          setLoadingInvites(false);
+        });
+    }
+  }, [user]);
+
   const [cats, setCats] = useState<Category[]>(user.categories || [
     { label: 'Patience', value: 91, color: '#a78bfa', icon: '◈' },
     { label: 'Loyalty', value: 88, color: '#60a5fa', icon: '◆' },
@@ -227,7 +274,7 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
           </div>
           
           {/* Theme Selector Widget */}
-          <div className="flex items-center gap-1 bg-white/[0.02] p-1 rounded-xl border border-white/[0.05] h-fit md:ml-4">
+          <div className="flex flex-wrap items-center gap-1.5 bg-white/[0.02] p-1 rounded-xl border border-white/[0.05] h-fit md:ml-4">
             <button
               onClick={() => {
                 setDashboardTheme('space-blue');
@@ -256,6 +303,33 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
               }}
             >
               🌑 Charcoal
+            </button>
+
+            <span className="h-4 w-[1px] bg-white/[0.06] mx-1 md:inline hidden" />
+
+            <button
+              onClick={() => {
+                setTourStep(1);
+                setTourActive(true);
+              }}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[9.5px] font-bold cursor-pointer transition-all uppercase tracking-wider font-mono select-none ${
+                tourActive 
+                  ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30' 
+                  : 'bg-white/[0.02] border border-white/[0.06] text-slate-300 hover:text-white'
+              }`}
+            >
+              🎓 Restart Tour
+            </button>
+
+            <span className="h-4 w-[1px] bg-white/[0.06] mx-1 md:inline hidden" />
+
+            <button
+              onClick={() => {
+                setShowTutorialVideo(true);
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[9.5px] font-bold cursor-pointer transition-all uppercase tracking-wider font-mono select-none bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/25"
+            >
+              🎥 Watch Tutorial
             </button>
           </div>
         </div>
@@ -329,7 +403,7 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
             setIsKastBoosted(true);
             const updatedUser = {
               ...user,
-              karmaScore: Math.min(850, user.karmaScore + boostAmount),
+              karmaScore: Math.min(1000, user.karmaScore + boostAmount),
             };
             if (onUpdateUser) {
               onUpdateUser(updatedUser);
@@ -342,31 +416,98 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
             
             {/* Left Column: 5 Behavioral Pillars */}
-            <div className="lg:col-span-7 flex flex-col">
-              <GlassCard className="p-6 md:p-8 flex-1">
+            <div className={`lg:col-span-7 flex flex-col ${tourActive && tourStep === 1 ? 'relative z-50' : 'relative z-10'}`}>
+              <GlassCard className="p-6 md:p-8 flex-1 !overflow-visible">
                 {/* Reputation Quotient Section */}
                 <div className="mb-6 pb-6 border-b border-white/[0.04]">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 relative">
+                    {/* Animated Step 1 Tooltip */}
+                    {tourActive && tourStep === 1 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute top-full left-0 mt-3 z-50 w-72 xs:w-80 p-4 rounded-xl bg-[#0b0b18]/95 border border-purple-500/40 shadow-[0_10px_35px_rgba(167,139,250,0.35)] text-left backdrop-blur-md"
+                      >
+                        <div className="absolute -top-1.5 left-8 w-3 h-3 bg-[#0b0b18] border-t border-l border-purple-500/40 transform rotate-45" />
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[9px] font-mono font-bold text-purple-400 uppercase bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+                            STEP 1/3 · KARMA SCORE
+                          </span>
+                          <button 
+                            onClick={() => setTourActive(false)}
+                            className="text-slate-500 hover:text-slate-300 transition-colors border-none bg-transparent cursor-pointer text-xs p-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <h4 className="text-xs font-bold text-white mb-1">Sovereign Aggregate Reputation Score</h4>
+                        <p className="text-[10px] text-slate-400 leading-relaxed mb-3">
+                          Your Web3 aggregate score ranges from 0 to 1000 PTS. Connect high-quality wallet signals to escalate your standing, test aura updates using the sandboxed emulator below, and pre-qualify for lenders!
+                        </p>
+                        <div className="flex justify-between items-center pt-2 border-t border-white/[0.04]">
+                          <button 
+                            onClick={() => {
+                              try { localStorage.setItem('karma_dashboard_tour_completed', 'true'); } catch {}
+                              setTourActive(false);
+                            }} 
+                            className="text-[9.5px] font-mono bg-transparent border-none text-slate-500 hover:text-slate-400 cursor-pointer"
+                          >
+                            Skip Tour
+                          </button>
+                          <button 
+                            onClick={() => setTourStep(2)} 
+                            className="px-3 py-1 rounded-lg bg-[#a78bfa] hover:bg-[#818cf8] text-slate-950 text-[10px] font-black border-none cursor-pointer transition-all active:scale-95"
+                          >
+                            Next Step →
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
                     <div>
                       <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Reputation Quotient</span>
                       <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-2" style={{ fontFamily: '"Syne", sans-serif' }}>
                         {user.karmaScore}
-                        <span className="text-xs font-mono font-normal text-slate-500">/ 850 PTS</span>
+                        <span className="text-xs font-mono font-normal text-slate-500">/ 1000 PTS</span>
                       </h2>
                     </div>
-                    <div className="text-right">
-                      <span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider transition-all duration-300"
-                        style={{ 
-                          backgroundColor: `${aura.color}15`, 
-                          color: aura.color,
-                          borderColor: `${aura.color}25`,
-                          borderWidth: '1px'
-                        }}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: aura.color }} />
-                        {aura.name}
-                      </span>
+                    <div className="text-right min-h-[29px] flex items-center justify-end">
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        <motion.span 
+                          key={aura.name}
+                          initial={{ opacity: 0, scale: 0.85, y: -6, filter: 'blur(3px)' }}
+                          animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+                          exit={{ opacity: 0, scale: 0.85, y: 6, filter: 'blur(3px)' }}
+                          transition={{ 
+                            type: 'spring', 
+                            stiffness: 400, 
+                            damping: 24,
+                            mass: 0.8
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider border select-none h-[22px]"
+                          style={{ 
+                            backgroundColor: `${aura.color}15`, 
+                            color: aura.color,
+                            borderColor: `${aura.color}25`,
+                          }}
+                        >
+                          <motion.span 
+                            animate={{ 
+                              scale: [1, 1.25, 1],
+                              opacity: [0.6, 1, 0.6]
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                            className="w-1.5 h-1.5 rounded-full inline-block shrink-0" 
+                            style={{ backgroundColor: aura.color }} 
+                          />
+                          {aura.name}
+                        </motion.span>
+                      </AnimatePresence>
                     </div>
                   </div>
 
@@ -396,7 +537,7 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
                           if (onUpdateUser) {
                             onUpdateUser({
                               ...user,
-                              karmaScore: Math.min(850, user.karmaScore + 50)
+                              karmaScore: Math.min(1000, user.karmaScore + 50)
                             });
                           }
                         }}
@@ -443,12 +584,54 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
               
               {/* Daily Streak visual component */}
               <motion.div
+                className={`flex flex-col ${tourActive && tourStep === 2 ? 'relative z-50' : 'relative z-10'}`}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
               >
-                <GlassCard className="p-5 md:p-6">
-                  <div className="flex justify-between items-center mb-3">
+                <GlassCard className="p-5 md:p-6 !overflow-visible">
+                  <div className="flex justify-between items-center mb-3 relative">
+                    {/* Animated Step 2 Tooltip */}
+                    {tourActive && tourStep === 2 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute top-full right-0 mt-3 z-50 w-72 xs:w-80 p-4 rounded-xl bg-[#0b0b18]/95 border border-amber-500/45 shadow-[0_10px_35px_rgba(251,191,36,0.35)] text-left backdrop-blur-md"
+                      >
+                        <div className="absolute -top-1.5 right-8 w-3 h-3 bg-[#0b0b18] border-t border-l border-amber-500/40 transform rotate-45" />
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[9px] font-mono font-bold text-amber-400 uppercase bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                            STEP 2/3 · HOLDING STREAKS
+                          </span>
+                          <button 
+                            onClick={() => setTourActive(false)}
+                            className="text-slate-500 hover:text-slate-300 transition-colors border-none bg-transparent cursor-pointer text-xs p-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <h4 className="text-xs font-bold text-white mb-1">Consistency Over Token Friction</h4>
+                        <p className="text-[10px] text-slate-400 leading-relaxed mb-3">
+                          Keep your connected funds consolidated in your wallet without arbitrary token exits to accumulate consecutive active diurnal streaks and gain reputation multipliers.
+                        </p>
+                        <div className="flex justify-between items-center pt-2 border-t border-white/[0.04]">
+                          <button 
+                            onClick={() => setTourStep(1)} 
+                            className="text-[9.5px] font-mono bg-transparent border-none text-slate-400 hover:text-slate-300 cursor-pointer"
+                          >
+                            ← Back
+                          </button>
+                          <button 
+                            onClick={() => setTourStep(3)} 
+                            className="px-3 py-1 rounded-lg bg-[#a78bfa] hover:bg-[#818cf8] text-slate-950 text-[10px] font-black border-none cursor-pointer transition-all active:scale-95"
+                          >
+                            Next Step →
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
                     <span className="text-[9px] font-mono tracking-widest text-[#fbbf24] uppercase">Holding Streaks</span>
                     <span className="text-xs font-mono font-bold text-amber-500">{user.streak}-day streak 🔥</span>
                   </div>
@@ -706,9 +889,37 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
                 <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-4">Reputation Quotient</div>
                 <KarmaRing score={user.karmaScore} aura={aura} size={170} />
                 <div className="mt-6 flex flex-col items-center w-full">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="w-2 h-2 rounded-full inline-block animate-pulse" style={{ backgroundColor: aura.color, boxShadow: `0 0 8px ${aura.color}` }} />
-                    <span className="text-xs uppercase font-mono tracking-widest" style={{ color: aura.color }}>{aura.name}</span>
+                  <div className="min-h-[24px] flex items-center justify-center mb-2">
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.div 
+                        key={aura.name}
+                        initial={{ opacity: 0, scale: 0.85, y: -4, filter: 'blur(3px)' }}
+                        animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, scale: 0.85, y: 4, filter: 'blur(3px)' }}
+                        transition={{ 
+                          type: 'spring', 
+                          stiffness: 400, 
+                          damping: 24,
+                          mass: 0.8
+                        }}
+                        className="flex items-center justify-center gap-2"
+                      >
+                        <motion.span 
+                          animate={{ 
+                            scale: [1, 1.3, 1],
+                            opacity: [0.6, 1, 0.6]
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }}
+                          className="w-2 h-2 rounded-full inline-block shrink-0" 
+                          style={{ backgroundColor: aura.color, boxShadow: `0 0 8px ${aura.color}` }} 
+                        />
+                        <span className="text-xs uppercase font-mono tracking-widest select-none" style={{ color: aura.color }}>{aura.name}</span>
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
                   <Tag color={aura.color}>Badge: {aura.badge}</Tag>
 
@@ -1057,6 +1268,83 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser }: Dashboar
 
       {showShare && (
         <ShareModal user={user} onClose={() => setShowShare(false)} />
+      )}
+
+      {/* Dynamic Floating Global Walkthrough Companion */}
+      {tourActive && tourStep === 3 && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full px-4 sm:px-0">
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            className="p-5 rounded-2xl bg-[#060611]/95 border-2 border-[#14F195]/45 shadow-[0_20px_50px_rgba(20,241,149,0.25)] text-left backdrop-blur-xl relative"
+          >
+            {/* Interactive spark particles */}
+            <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-[#14F195]/10 flex items-center justify-center border border-[#14F195]/30 text-xs animate-bounce">
+              ✨
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-mono font-bold text-[#14F195] uppercase bg-[#14F195]/15 px-2.5 py-0.5 rounded-lg border border-[#14F195]/30">
+                STEP 3/3 · NEURAL FORECAST
+              </span>
+              <button 
+                onClick={() => setTourActive(false)}
+                className="text-slate-500 hover:text-slate-300 transition-colors border-none bg-transparent cursor-pointer text-xs p-1"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <h4 className="text-sm font-extrabold text-white mb-1.5 flex items-center gap-1.5" style={{ fontFamily: "'Syne', sans-serif" }}>
+              🧠 Calibrate AI Reading Module
+            </h4>
+            <p className="text-xs text-slate-400 leading-relaxed mb-4">
+              Authorize our deep neural consensus engine to analyze your combined active behavioral aura. Click below to experience your customized wallet psychological profile report.
+            </p>
+            
+            <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/[0.05]">
+              <button 
+                onClick={() => setTourStep(2)} 
+                className="text-xs font-semibold text-slate-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer"
+              >
+                ← Back
+              </button>
+              
+              <div className="flex gap-2">
+                {onNavigatePage ? (
+                  <button 
+                    onClick={() => {
+                      try { localStorage.setItem('karma_dashboard_tour_completed', 'true'); } catch {}
+                      setTourActive(false);
+                      onNavigatePage('AI Reading');
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#14F195] to-emerald-400 hover:scale-[1.04] transition-all text-slate-950 text-xs font-black border-none cursor-pointer shadow-[0_0_15px_rgba(20,241,149,0.3)]"
+                  >
+                    🚀 Enter AI Reading
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      try { localStorage.setItem('karma_dashboard_tour_completed', 'true'); } catch {}
+                      setTourActive(false);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-[#14F195] hover:bg-[#14F195]/95 text-slate-950 text-xs font-black border-none cursor-pointer transition-all"
+                  >
+                    Complete Tour! 🎉
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {showTutorialVideo && (
+        <NavigationVideo 
+          isOpen={showTutorialVideo} 
+          onClose={() => setShowTutorialVideo(false)} 
+        />
       )}
     </div>
   );

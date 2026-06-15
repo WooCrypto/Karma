@@ -185,7 +185,7 @@ export default function Lenders({ user }: LendersProps) {
     const logsList = [
       `📡 Packing credit query broadcast packets for address ${user.address.slice(0, 10)}...`,
       `⚙️ Indexing holding block epochs, streak indicators (${user.streak} days), and behavior trends...`,
-      `🔍 Verifying Karma score (${karmaScore}/850) in de-centralized reputation underlay network...`,
+      `🔍 Verifying Karma score (${karmaScore}/1000) in de-centralized reputation underlay network...`,
       `✨ Aura matched: "${user.personality || 'Visionary'}" checks out healthy with exceptionally low bankruptcy hazard.`,
       `🤝 Conveying underwritten proposal parameters of ${borrowAmount} ${selectedToken} (APR: ${finalApr}%) to ${selectedPartner.name}...`,
       `⚡ Dynamic Liquidity Handshake accepted: Cryptographic signature underwrote successfully!`,

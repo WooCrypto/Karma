@@ -3,6 +3,8 @@ import GlassCard from './GlassCard';
 import KarmaLogo from './KarmaLogo';
 import { useLanguage } from '../context/LanguageContext';
 import ScoreChecker from './ScoreChecker';
+import SovereignGuideSimulator from './SovereignGuideSimulator';
+import NavigationVideo from './NavigationVideo';
 
 interface LandingProps {
   onShowConnect: () => void;
@@ -87,6 +89,7 @@ export default function Landing({ onShowConnect, onShowManifesto }: LandingProps
   const [sliderScore, setSliderScore] = useState<number>(780);
   const [showFirstTimeHelp, setShowFirstTimeHelp] = useState<boolean>(false);
   const [activeStep, setActiveStep] = useState<number>(1);
+  const [showTutorialVideo, setShowTutorialVideo] = useState<boolean>(false);
   const { t } = useLanguage();
 
   const getTierFromScore = (score: number) => {
@@ -264,6 +267,13 @@ export default function Landing({ onShowConnect, onShowManifesto }: LandingProps
                 {t('nav.connect')} →
               </button>
               <button
+                onClick={() => setShowTutorialVideo(true)}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-400 font-extrabold text-sm transition-all cursor-pointer flex items-center justify-center gap-2 outline-none shadow-[0_4px_15px_rgba(20,241,149,0.1)] active:scale-95"
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
+                🎥 Watch Tutorial
+              </button>
+              <button
                 onClick={onShowManifesto}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/30 text-[#c084fc] font-extrabold text-sm transition-all cursor-pointer flex items-center justify-center gap-2 outline-none shadow-[0_4px_15px_rgba(167,139,250,0.15)] active:scale-95"
                 style={{ fontFamily: "'Syne', sans-serif" }}
@@ -428,6 +438,9 @@ export default function Landing({ onShowConnect, onShowManifesto }: LandingProps
         )}
 
       </div>
+
+      {/* Dynamic Companion Simulator Walkthrough Video Tour */}
+      <SovereignGuideSimulator onShowConnect={onShowConnect} />
 
       {/* Dynamic Karma Creed Highlight Section */}
       <div className="max-w-[1080px] mx-auto px-4 sm:px-6 py-8 relative z-10">
@@ -661,6 +674,8 @@ export default function Landing({ onShowConnect, onShowManifesto }: LandingProps
           Initialize Sandbox Connection →
         </button>
       </div>
+
+      <NavigationVideo isOpen={showTutorialVideo} onClose={() => setShowTutorialVideo(false)} />
 
     </div>
   );

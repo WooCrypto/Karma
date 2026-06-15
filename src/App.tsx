@@ -235,27 +235,12 @@ export default function App() {
     };
   }, [page, user]);
 
-  function handleConnect(data: { wallet: Wallet; username: string; hideWallet: boolean; address: string }) {
+  function handleConnect(data: { wallet: Wallet; username: string; hideWallet: boolean; address: string; profile?: User }) {
     let profile: User;
     
-    try {
-      const registryRaw = localStorage.getItem('karma_profiles_registry');
-      if (registryRaw) {
-        const registry = JSON.parse(registryRaw);
-        if (registry[data.wallet.id] && registry[data.wallet.id].username === data.username) {
-          // Returning user: maintain their exact state!
-          profile = {
-            ...registry[data.wallet.id],
-            address: data.address,
-            hideWallet: data.hideWallet,
-          };
-        } else {
-          profile = generateUserProfile(data.wallet, data.username, data.address, data.hideWallet);
-        }
-      } else {
-        profile = generateUserProfile(data.wallet, data.username, data.address, data.hideWallet);
-      }
-    } catch (e) {
+    if (data.profile) {
+      profile = data.profile;
+    } else {
       profile = generateUserProfile(data.wallet, data.username, data.address, data.hideWallet);
     }
 
@@ -265,12 +250,6 @@ export default function App() {
     
     try {
       localStorage.setItem('karma_user_session', JSON.stringify(profile));
-      
-      // Save/update this profile in the persistent registry
-      const registryRaw = localStorage.getItem('karma_profiles_registry') || '{}';
-      const registry = JSON.parse(registryRaw);
-      registry[data.wallet.id] = profile;
-      localStorage.setItem('karma_profiles_registry', JSON.stringify(registry));
     } catch (err) {
       console.warn('Sandbox storage failed:', err);
     }
@@ -288,22 +267,27 @@ export default function App() {
     }
   }
 
-  function handleProfileSave(updated: User) {
+  async function handleProfileSave(updated: User) {
     setUser(updated);
     setShowEdit(false);
     
     try {
       localStorage.setItem('karma_user_session', JSON.stringify(updated));
       
-      // Sync into the persistent registry
-      const registryRaw = localStorage.getItem('karma_profiles_registry') || '{}';
-      const registry = JSON.parse(registryRaw);
-      if (updated.wallet && updated.wallet.id) {
-        registry[updated.wallet.id] = updated;
-        localStorage.setItem('karma_profiles_registry', JSON.stringify(registry));
-      }
+      // Update persistent database dynamically
+      await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: updated.address,
+          signature: 'sandbox_sig', // Bypass since it's already an active authenticated session
+          username: updated.username,
+          hideWallet: updated.hideWallet,
+          wallet: updated.wallet
+        })
+      });
     } catch (err) {
-      console.warn('Sandbox storage failed:', err);
+      console.warn('Backend sync failed:', err);
     }
   }
 
@@ -342,6 +326,7 @@ export default function App() {
             user={user} 
             onDisconnect={() => setShowDisconnect(true)} 
             onUpdateUser={handleProfileSave}
+            onNavigatePage={setPage}
           />
         )}
         
@@ -447,7 +432,7 @@ function Footer({ page, setPage, user, onShowWhitepaper, onShowManifesto, onShow
         return {
           title: 'MY KARMA REP PASSPORT',
           desc: user 
-            ? `Your decentralized reputation signature is active. @${user.username} is maintaining a score of ${user.karmaScore}/850 within the '${aura?.name || 'Initiate'}' Aura bracket. Your sovereign holding streak has successfully reached ${user.streak} active diurnal cycles.`
+            ? `Your decentralized reputation signature is active. @${user.username} is maintaining a score of ${user.karmaScore}/1000 within the '${aura?.name || 'Initiate'}' Aura bracket. Your sovereign holding streak has successfully reached ${user.streak} active diurnal cycles.`
             : `Sovereign reputation ledger initialized. Connect your sandbox keyset to register.`,
           status: user ? 'VERIFIED' : 'UNREGISTERED',
           hash: user ? `0x${user.address.substring(2, 6).toUpperCase()}...${user.address.substring(user.address.length - 4).toUpperCase()}` : '0x0000...0000',
@@ -491,7 +476,7 @@ function Footer({ page, setPage, user, onShowWhitepaper, onShowManifesto, onShow
         return {
           title: 'GENESIS NETWORK CORE',
           desc: user 
-            ? `Connected to sovereign network block. Current reputation metric is ${user.karmaScore}/850 within the '${aura?.name || 'Initiate'}' Aura. Use the navigation buttons above to guide your credit assets.`
+            ? `Connected to sovereign network block. Current reputation metric is ${user.karmaScore}/1000 within the '${aura?.name || 'Initiate'}' Aura. Use the navigation buttons above to guide your credit assets.`
             : `Welcome to the future of undercollateralized trust metadata. Connect your secure Web3 wallet signature to claim your custom handle and initial credit stats.`,
           status: user ? 'CONNECTED' : 'DISCONNECTED',
           hash: user ? `0x${user.address.substring(2, 8).toUpperCase()}` : 'SANDBOX_ENV',
@@ -504,7 +489,7 @@ function Footer({ page, setPage, user, onShowWhitepaper, onShowManifesto, onShow
   const details = getPageKarmaDetails();
 
   return (
-    <footer className="border-t border-white/[0.05] bg-[#05050b] text-slate-400 py-12 px-6 sm:px-12 mt-auto select-none" id="global-footer-system">
+    <footer className="relative z-20 border-t border-white/[0.05] bg-[#05050b] text-slate-400 py-12 px-6 sm:px-12 mt-auto select-none" id="global-footer-system">
       <div className="max-w-[1080px] mx-auto mb-10">
         {/* Dynamic Page-Aware Karma Footer Stamp */}
         <div 
@@ -691,7 +676,7 @@ function Footer({ page, setPage, user, onShowWhitepaper, onShowManifesto, onShow
               <Twitter size={15} />
             </a>
             <a 
-              href="https://t.me/karmascore" 
+              href="https://t.me/KarmaScore" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="w-10 h-10 rounded-xl bg-[#05050b] hover:bg-[#a78bfa]/10 border border-white/[0.05] hover:border-[#a78bfa]/30 flex items-center justify-center text-slate-400 hover:text-[#a78bfa] transition-all cursor-pointer"

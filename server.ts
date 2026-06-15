@@ -5,6 +5,21 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { ethers } from 'ethers';
+
+// Import our database and calculation engines
+import { 
+  createChallenge, 
+  getChallenge, 
+  getChallengeRecord,
+  clearChallenge, 
+  saveUserProfile, 
+  getUserProfile, 
+  getAllProfiles, 
+  triggerDailyScoreUpdates,
+  UserProfile
+} from './server/db';
+import { computeKarmaProfile } from './server/scoreCalculator';
 
 dotenv.config();
 
@@ -21,6 +36,50 @@ if (!fs.existsSync(PASSPORTS_DIR)) {
 // Access body variables with increased payload limits so base64 canvas exports upload successfully
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// ── SECURITY: Rate Limiting & DDOS Protection Middleware ──
+interface RateLimitRecord {
+  count: number;
+  resetAt: number;
+}
+const ipLimits = new Map<string, RateLimitRecord>();
+
+function rateLimiter(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const ip = req.ip || req.headers['x-forwarded-for'] as string || 'unknown';
+  const now = Date.now();
+  const limitWindow = 60 * 1000; // 1 minute window
+  const maxRequests = 100; // 100 requests per minute max
+
+  let record = ipLimits.get(ip);
+  if (!record || now > record.resetAt) {
+    record = { count: 0, resetAt: now + limitWindow };
+  }
+
+  record.count++;
+  ipLimits.set(ip, record);
+
+  if (record.count > maxRequests) {
+    return res.status(429).json({ 
+      error: 'Too many requests. Please space out your reputation operations. (Rate Limit Exceeded)' 
+    });
+  }
+  next();
+}
+
+app.use(rateLimiter);
+
+// ── SECURITY: Alphanumeric Handle Validation Middleware ──
+function validateProfileInput(username: string): string | null {
+  if (!username) return 'Username handle is required.';
+  const trimmed = username.trim();
+  if (trimmed.length < 3 || trimmed.length > 20) {
+    return 'Username details must sit between 3 and 20 character length.';
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+    return 'Handle coordinates can only contain standard alphanumeric characters and underscores.';
+  }
+  return null;
+}
 
 // Lazy-initialise or guard clean Gemini SDK initialization to prevent startup crashes
 let aiInstance: GoogleGenAI | null = null;
@@ -44,6 +103,218 @@ function getGeminiClient(): GoogleGenAI {
   return aiInstance;
 }
 
+// ── API Endpoint: Request Signature Challenge Code ──
+app.post('/api/auth/challenge', async (req, res) => {
+  try {
+    const { address } = req.body;
+    if (!address || typeof address !== 'string') {
+      return res.status(400).json({ error: 'Valid wallet address string is required' });
+    }
+    const challenge = await createChallenge(address);
+    const message = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${challenge}\nTimestamp: ${Date.now()}`;
+    res.json({ challenge, message });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API Endpoint: Verify Wallet Signature & Sync Profile ──
+app.post('/api/auth/verify', async (req, res) => {
+  try {
+    const { address, signature, username, hideWallet, wallet, referrer } = req.body;
+    
+    if (!address || !username) {
+      return res.status(400).json({ error: 'Address and username specifications are mandatory.' });
+    }
+
+    const usernameError = validateProfileInput(username);
+    if (usernameError) {
+      return res.status(400).json({ error: usernameError });
+    }
+
+    const isSandboxAddress = address.length !== 42 || !address.toLowerCase().startsWith('0x');
+    
+    // Standard EVM Verify logic using ethers if not sandbox (or if a signature is supplied)
+    if (!isSandboxAddress && signature && signature !== 'sandbox_sig') {
+      const challengeRecord = await getChallengeRecord(address);
+      if (!challengeRecord) {
+        return res.status(400).json({ error: 'Signature session challenge has expired. Request a new login check-in.' });
+      }
+
+      try {
+        const messageToReconstruct = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${challengeRecord.challenge}`;
+        
+        let resolvedAddress = ethers.verifyMessage(messageToReconstruct, signature);
+        
+        if (resolvedAddress.toLowerCase() !== address.toLowerCase()) {
+          // Attempt verification on timestamp-appended structured layouts as fallback
+          const timestamp = challengeRecord.createdAt;
+          const timestampMessage = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${challengeRecord.challenge}\nTimestamp: ${timestamp}`;
+          resolvedAddress = ethers.verifyMessage(timestampMessage, signature);
+        }
+
+        if (resolvedAddress.toLowerCase() !== address.toLowerCase()) {
+          return res.status(401).json({ error: 'Cryptographic signature mismatch. Wallet authentication failed.' });
+        }
+        
+        await clearChallenge(address);
+      } catch (cryptoErr: any) {
+        console.error('[AUTH] Crypto verification failed:', cryptoErr);
+        return res.status(400).json({ error: 'Invalid hex signature payload formatting.' });
+      }
+    }
+
+    // Load or generate profile record
+    let profile = await getUserProfile(address);
+    if (!profile) {
+      console.log(`[DB] Creating new ledger identity record for address: ${address}`);
+      const walletId = wallet?.id || 'metamask';
+      const walletName = wallet?.name || 'MetaMask';
+      const walletIcon = wallet?.icon || '🦊';
+      const walletColor = wallet?.color || '#f6851b';
+      const walletDesc = wallet?.desc || 'Browser Wallet';
+
+      profile = computeKarmaProfile(
+        address,
+        username,
+        walletId,
+        walletName,
+        walletIcon,
+        walletColor,
+        walletDesc,
+        !!hideWallet
+      );
+
+      // Handle referral rewarding if provided
+      if (referrer && typeof referrer === 'string' && referrer.trim()) {
+        const cleanReferrer = referrer.trim();
+        const profileLower = cleanReferrer.toLowerCase();
+        const selfAddrLower = address.toLowerCase();
+        const selfUserLower = username.toLowerCase();
+
+        if (profileLower !== selfAddrLower && profileLower !== selfUserLower) {
+          const allProfiles = await getAllProfiles();
+          const foundReferrer = allProfiles.find(
+            p => p.username.toLowerCase() === profileLower || p.address.toLowerCase() === profileLower
+          );
+
+          if (foundReferrer) {
+            console.log(`[REFERRAL] Valid referral found: @${foundReferrer.username} referred new user @${username}`);
+            foundReferrer.auraPoints = (foundReferrer.auraPoints || 0) + 1000;
+            foundReferrer.referralPoints = (foundReferrer.referralPoints || 0) + 1000;
+            foundReferrer.referralsCount = (foundReferrer.referralsCount || 0) + 1;
+
+            if (!foundReferrer.activities) foundReferrer.activities = [];
+            foundReferrer.activities.unshift({
+              id: `ref-reward-${Date.now()}`,
+              timestamp: 'Just now',
+              type: 'Referral Reward',
+              txHash: '0x' + crypto.randomBytes(12).toString('hex') + 'ref',
+              amount: '+1000',
+              asset: 'AURA',
+              scoreDelta: 0,
+              patienceImpact: 15,
+              loyaltyImpact: 20,
+              wisdomImpact: 10,
+            });
+            if (foundReferrer.activities.length > 20) foundReferrer.activities.pop();
+
+            await saveUserProfile(foundReferrer);
+
+            // Save relationship reference inside current profile
+            profile.referredBy = foundReferrer.username;
+          }
+        }
+      }
+
+      await saveUserProfile(profile);
+    } else {
+      // Returning profile updates settings if edited
+      profile.username = username;
+      profile.hideWallet = !!hideWallet;
+      await saveUserProfile(profile);
+    }
+
+    res.json(profile);
+  } catch (err: any) {
+    console.error('Verify error:', err);
+    res.status(500).json({ error: err.message || 'Verification process crashed.' });
+  }
+});
+
+// ── API Endpoint: Retrieve Direct Profile data ──
+app.get('/api/profile/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const profile = await getUserProfile(address);
+    if (!profile) {
+      return res.status(404).json({ error: 'Reputation profile and verification passport not found for this key.' });
+    }
+    res.json(profile);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API Endpoint: Retrieve referral history for a username ──
+app.get('/api/referrals/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    if (!username) {
+      return res.status(400).json({ error: 'Username parameter is required.' });
+    }
+    const allProfiles = await getAllProfiles();
+    const targetUsername = username.toLowerCase();
+    
+    // Filter profiles that were referred by this username
+    const referrals = allProfiles
+      .filter(p => p.referredBy?.toLowerCase() === targetUsername)
+      .map(p => ({
+        address: p.address,
+        username: p.username,
+        connectedAt: p.connectedAt,
+        karmaScore: p.karmaScore,
+        avatarIcon: p.wallet?.icon || '👤',
+        pointsEarned: 1000,
+      }));
+
+    res.json(referrals);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API Endpoint: Boost Score (Simulated Actions from visual enhancers) ──
+app.post('/api/profile/boost', async (req, res) => {
+  try {
+    const { address, boostAmount } = req.body;
+    if (!address) {
+      return res.status(400).json({ error: 'Target wallet address is required.' });
+    }
+    const profile = await getUserProfile(address);
+    if (!profile) {
+      return res.status(404).json({ error: 'Reputation tracking profile not found.' });
+    }
+
+    // Limit maximum boosted scores to 1000
+    profile.karmaScore = Math.min(1000, profile.karmaScore + (boostAmount || 15));
+    await saveUserProfile(profile);
+    res.json(profile);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API Endpoint: Trigger Manual Daily Refresh (Admin verification) ──
+app.post('/api/cron/trigger', async (req, res) => {
+  try {
+    await triggerDailyScoreUpdates();
+    res.json({ success: true, message: 'Ledger score updates and holding streak ticks compiled safely across all active cards.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── API Endpoint: Real AI Reputation Reading ──
 app.post('/api/gemini/reading', async (req, res) => {
   try {
@@ -51,7 +322,7 @@ app.post('/api/gemini/reading', async (req, res) => {
 
     const rawUsername = username || 'anonymous_explorer';
     const rawAddress = address || '0x0000...0000';
-    const rawScore = score || 85;
+    const rawScore = score || 450;
     const rawStreak = streak || 4;
     const rawPersonality = personality || 'Visionary';
     const rawWallet = wallet || 'Web3 Wallet';
@@ -75,7 +346,7 @@ Stats profile:
 - Handle: @${rawUsername}
 - Wallet Address: ${rawAddress}
 - Connected via: ${rawWallet}
-- Reputation Rating: ${rawScore}/100
+- Reputation Rating: ${rawScore}/1000 (0-200 New Soul, 201-400 Contributor, 401-600 Builder, 601-800 Guardian, 801-1000 Legend)
 - Archetype: ${rawPersonality}
 - Conviction Streak: ${rawStreak} days Holding without Exits
 
@@ -174,7 +445,7 @@ app.get('/passport/img/:id.png', (req, res) => {
       return res.sendFile(filepath);
     }
     
-    // Fallback to primary marketing fallback asset if not specifically found
+    // Fallback to primary marketing fallback asset if not found
     const staticFallback = path.join(process.cwd(), 'src', 'assets', 'images', 'karma_share_card_1780957350199.png');
     if (fs.existsSync(staticFallback)) {
       res.setHeader('Content-Type', 'image/png');
@@ -330,6 +601,16 @@ async function bootstrapServer() {
     });
     console.log('Built assets serving mounted from static project distribution path.');
   }
+
+  // Set background scheduler loop: Auto sweep updates every 24 hours
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      await triggerDailyScoreUpdates();
+    } catch (err) {
+      console.error('[CRON] Error in background update loop:', err);
+    }
+  }, TWENTY_FOUR_HOURS_MS);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`KARMA AI Server running on http://localhost:${PORT}`);

@@ -16,6 +16,18 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
   const [hideWallet, setHideWallet] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [savedProfile, setSavedProfile] = useState<any | null>(null);
+  const [referrer, setReferrer] = useState('');
+
+  // Auto-populate referrer from URL query params (e.g. ?ref=Satoshi)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        setReferrer(ref.trim());
+      }
+    }
+  }, []);
 
   // Connection options state: auto web3, manual paste, sandbox template
   const [connectMethod, setConnectMethod] = useState<'auto' | 'manual' | 'sandbox'>('auto');
@@ -187,19 +199,84 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
       resolvedAddress = '0x' + hexPart; // produces a real formatted 42-character hex string
     }
 
+    let signature = 'sandbox_sig';
+    if (connectMethod === 'auto' && typeof window !== 'undefined' && (window as any).ethereum) {
+      try {
+        const provider = (window as any).ethereum;
+        // Request challenge
+        const challengeRes = await fetch('/api/auth/challenge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: resolvedAddress })
+        });
+        const challengeData = await challengeRes.json();
+        if (challengeData.error) {
+          setManualAddressError(challengeData.error);
+          return;
+        }
+        
+        // Request signature
+        signature = await provider.request({
+          method: 'personal_sign',
+          params: [challengeData.message, resolvedAddress]
+        });
+      } catch (err: any) {
+        console.warn('EVM signing rejected or failed:', err);
+        setManualAddressError(err.message || 'Signature rejected by browser extension wallet.');
+        return;
+      }
+    }
+
     setStep('connecting');
 
-    // Keep the immersive loading experience for authentication parity
-    setTimeout(() => {
-      if (selectedWallet) {
-        onConnect({
-          wallet: selectedWallet,
+    try {
+      // Call verify endpoint to compile reputation index on-chain
+      const verifyRes = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: resolvedAddress,
+          signature,
           username: trimmed,
           hideWallet,
-          address: resolvedAddress,
-        });
+          wallet: selectedWallet,
+          referrer: referrer.trim() || undefined
+        })
+      });
+      if (!verifyRes.ok) {
+        const errText = await verifyRes.text();
+        let errMsg = 'Failed to synchronize reputation passport with the index server.';
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed && parsed.error) errMsg = parsed.error;
+        } catch (_) {}
+        setStep('setup');
+        setManualAddressError(errMsg);
+        return;
       }
-    }, 4200);
+      const profile = await verifyRes.json();
+      if (profile.error) {
+        setStep('setup');
+        setManualAddressError(profile.error);
+        return;
+      }
+      
+      // Complete callback with real persistent backend profile data!
+      setTimeout(() => {
+        if (selectedWallet) {
+          onConnect({
+            wallet: selectedWallet,
+            username: trimmed,
+            hideWallet,
+            address: resolvedAddress,
+            profile // pass along backend parsed record
+          } as any);
+        }
+      }, 4200);
+    } catch (err: any) {
+      setStep('setup');
+      setManualAddressError('Failed to synchronize reputation passport with the index server.');
+    }
   }
 
   return (
@@ -251,6 +328,17 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           {/* Wallet List selector */}
           {step === 'pick' && (
             <div className="p-6 md:p-8">
+              {/* Sandbox Quick Onramp Tip */}
+              <div className="mb-5 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 flex gap-2.5 items-start text-left">
+                <span className="text-sm select-none">💡</span>
+                <div className="space-y-0.5">
+                  <span className="text-[10.5px] font-black text-amber-300 block font-mono">Quick-Start Sandbox Tip</span>
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    Select <strong>any wallet provider</strong> below (e.g. App Wallet or MetaMask), then choose the <strong>🎲 Sandbox ID</strong> tab on the next step to instantly preview all dashboards.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3.5">
                 {WALLETS.map(w => (
                   <button
@@ -479,6 +567,29 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                 )}
                 <p className="text-[9px] text-slate-500 font-mono mt-1.5">
                   Lowercase ASCII letters, digests, and underscores only. Length: 3-20 characters.
+                </p>
+              </div>
+
+              {/* Referrer Username Input Container */}
+              <div>
+                <label className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 block">
+                  Referral Handle or Address (Optional)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-[#a78bfa]/60 font-bold text-sm">@</span>
+                  <input
+                    type="text"
+                    value={referrer}
+                    onChange={e => setReferrer(e.target.value)}
+                    placeholder="referrer_username"
+                    className="w-full pl-8 pr-4 py-3.5 rounded-xl border bg-white/[0.03] text-slate-100 text-sm font-medium outline-none transition-all placeholder:text-slate-600 focus:bg-white/[0.05]"
+                    style={{
+                      borderColor: 'rgba(255, 255, 255, 0.08)',
+                    }}
+                  />
+                </div>
+                <p className="text-[9px] text-slate-500 font-mono mt-1.5">
+                  Optionally paste a referral handle or wallet address. They will earn 1,000 Aura points.
                 </p>
               </div>
 

@@ -37,7 +37,7 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
   const personality = PERSONALITIES[user.personality || 'Visionary'] || PERSONALITIES.Visionary;
 
   // Calculate dynamic global rank percent based on standard score formula
-  const rankPercent = ((850 - user.karmaScore) / 550 * 9.8 + 0.2).toFixed(2);
+  const rankPercent = ((1000 - user.karmaScore) / 1000 * 9.8 + 0.2).toFixed(2);
   const rank = `Top ${rankPercent}%`;
 
   // Autoload drawing state to dynamic backend folder on mount for immediate live sharing URL
@@ -106,7 +106,7 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
 🔮 Archetype: ${personality.name} ${personality.icon}
 🌎 Global Rank: ${rank}
 🔥 Holding Streak: ${user.streak} Days 🔥
-📊 Reputation Score: ${user.karmaScore}/850 [${aura.name} ${aura.badge}]
+📊 Reputation Score: ${user.karmaScore}/1000 [${aura.name} ${aura.badge}]
 💸 Eligible Loan Limit: $${maxBorrowUSDT.toLocaleString()} USDT/USDC
 
 🖼️ Passport Preview: ${cardLink}
@@ -141,7 +141,7 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
       ? `${window.location.origin}/share/passport/${sharedId}`
       : `${window.location.origin}/src/assets/images/karma_share_card_1780957350199.png`;
 
-    const tweetText = `🔍 Just checked my sovereign identity & credit reputation passport on @KarmaAIScore !\n\n🔮 Archetype: ${personality.name} ${personality.icon}\n📊 Reputation Score: ${user.karmaScore}/850 [${aura.name} ${aura.badge}]\n🔥 Hold Streak: ${user.streak} Days\n💸 Eligible Loan Limit: $${maxBorrowUSDT.toLocaleString()} USDT/USDC\n\n🖼️ Passport Preview: ${cardLink}\n\nJoin the active sovereign credit index live:\n${window.location.origin}\n\n#Karma #Web3Karma #DeFiPassport #Solana #Base`;
+    const tweetText = `🔍 Just checked my sovereign identity & credit reputation passport on @KarmaAIScore !\n\n🔮 Archetype: ${personality.name} ${personality.icon}\n📊 Reputation Score: ${user.karmaScore}/1000 [${aura.name} ${aura.badge}]\n🔥 Hold Streak: ${user.streak} Days\n💸 Eligible Loan Limit: $${maxBorrowUSDT.toLocaleString()} USDT/USDC\n\n🖼️ Passport Preview: ${cardLink}\n\nJoin the active sovereign credit index live:\n${window.location.origin}\n\n#Karma #Web3Karma #DeFiPassport #Solana #Base`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(url, '_blank', 'noreferrer,noopener');
   }
@@ -293,12 +293,12 @@ ${(user.categories || []).map(c => `${c.icon} ${c.label}: ${c.value}/100 [${'█
       ctx.arc(width / 2, scoreY, 65, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Score perimeter fill ring based on reputation percentage (300 to 850 range)
+      // Score perimeter fill ring based on reputation percentage (0 to 1000 range)
       ctx.strokeStyle = aura.color;
       ctx.lineWidth = 8;
       ctx.beginPath();
-      // start at -Math.PI/2 (top) and map 300..850 onto 0..2PI
-      const basePercentage = Math.max(0, Math.min(1, (user.karmaScore - 300) / 550));
+      // start at -Math.PI/2 (top) and map 0..1000 onto 0..2PI
+      const basePercentage = Math.max(0, Math.min(1, user.karmaScore / 1000));
       const endAngle = -Math.PI / 2 + basePercentage * Math.PI * 2;
       ctx.arc(width / 2, scoreY, 65, -Math.PI / 2, endAngle, false);
       ctx.stroke();

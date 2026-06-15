@@ -41,7 +41,7 @@ export default function ReputationTimeline({ user }: ReputationTimelineProps) {
       timestamp: 'Just Now',
       type: 'milestone',
       title: `Ascended to ${aura.name} Status`,
-      description: `Your Reputation Quotient calibrated at ${user.karmaScore}/850. Ranked as a ${aura.badge} user within the network registry.`,
+      description: `Your Reputation Quotient calibrated at ${user.karmaScore}/1000. Ranked as a ${aura.badge} user within the network registry.`,
       status: 'completed',
       badgeText: '✧ ASCENSION',
       icon: '✨',
@@ -511,12 +511,11 @@ export default function ReputationTimeline({ user }: ReputationTimelineProps) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { range: '800 – 850', name: 'White Aura', color: '#f8fafc', badge: 'Transcendent Client', desc: 'The absolute crest of on-chain conviction. Pristine hold histories.' },
-                    { range: '740 – 799', name: 'Purple Aura', color: '#a78bfa', badge: 'Ascendant Pioneer', desc: 'Superior hold attributes and extensive voting records verified.' },
-                    { range: '680 – 739', name: 'Gold Aura', color: '#fbbf24', badge: 'Luminous Consolidator', desc: 'Substantial holding cycles with regular governance inputs.' },
-                    { range: '600 – 679', name: 'Green Aura', color: '#34d399', badge: 'Flourishing Citizen', desc: 'Healthy balance profiles with zero flags or default triggers.' },
-                    { range: '500 – 599', name: 'Blue Aura', color: '#60a5fa', badge: 'Awakened Onboarder', desc: 'Credentials linked, passport active. Standard entry ratings.' },
-                    { range: '300 – 499', name: 'Gray Aura', color: '#6b7280', badge: 'Initiate Node', desc: 'Basic ground state awaiting transactional signature analysis.' }
+                    { range: '801 – 1000', name: 'Gold Aura', color: '#fbbf24', badge: 'Legend', desc: 'The absolute crest of on-chain conviction. Legendary holding patterns.' },
+                    { range: '601 – 800', name: 'Purple Aura', color: '#a78bfa', badge: 'Guardian', desc: 'Superior hold attributes and extensive voting records verified.' },
+                    { range: '401 – 600', name: 'Blue Aura', color: '#60a5fa', badge: 'Builder', desc: 'Substantial holding cycles with regular governance inputs.' },
+                    { range: '201 – 400', name: 'Gray Aura', color: '#94a3b8', badge: 'Contributor', desc: 'Credentials linked, passport active. Active onboarding phase.' },
+                    { range: '0 – 200', name: 'Charcoal Aura', color: '#4b5563', badge: 'New Soul', desc: 'Initial ground state awaiting transaction signature analysis.' }
                   ].map((tier, idx) => (
                     <div key={idx} className="p-3 bg-white/[0.012] border border-white/[0.03] rounded-xl hover:border-white/[0.06] hover:bg-white/[0.02] transition-colors flex flex-col justify-between">
                       <div>

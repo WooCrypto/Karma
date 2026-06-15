@@ -8,14 +8,14 @@ interface KarmaRingProps {
 }
 
 export default function KarmaRing({ score, aura, size = 180 }: KarmaRingProps) {
-  const [val, setVal] = useState(300);
+  const [val, setVal] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const strokeWidth = 10;
   const radius = size / 2 - strokeWidth - 6;
   const circumference = 2 * Math.PI * radius;
   
-  // Calculate percentage within the 300 - 850 range
-  const percentage = Math.max(0, Math.min(1, (score - 300) / 550));
+  // Calculate percentage within the 0 - 1000 range
+  const percentage = Math.max(0, Math.min(1, score / 1000));
   const targetOffset = circumference - percentage * circumference;
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function KarmaRing({ score, aura, size = 180 }: KarmaRingProps) {
       setIsAnimating(true);
     }, 50);
 
-    const startVal = 300;
+    const startVal = 0;
     const endVal = score;
     const duration = 1600; // 1.6s
     const startTime = performance.now();

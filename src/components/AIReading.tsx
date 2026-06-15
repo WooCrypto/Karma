@@ -75,7 +75,7 @@ Aura Alignment:  ${user.personality || 'Visionary'}
 
 📈 TRUST & FIDELITY INDICES
 --------------------------------------------------------------------------------
-Karma Score:     ${user.karmaScore || 70} / 100
+Karma Score:     ${user.karmaScore || 750} / 1000
 Streak Duration: ${user.streak || 0} days active
 
 📊 BEHAVIORAL ATTRIBUTES SCORECARD
