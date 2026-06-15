@@ -3,6 +3,7 @@ import { User, Wallet } from '../types';
 import { WALLETS } from '../constants';
 import GlassCard from './GlassCard';
 import { ShieldCheck, Cpu, Database, Activity, Landmark } from 'lucide-react';
+import { fetchWithFallback } from '../utils/api';
 
 interface ConnectModalProps {
   onConnect: (data: { wallet: Wallet; username: string; hideWallet: boolean; address: string }) => void;
@@ -212,8 +213,8 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
     setStep('connecting');
 
     try {
-      // Call verify endpoint to compile reputation index on-chain
-      const verifyRes = await fetch('/api/auth/verify', {
+      // Call verify endpoint to compile reputation index on-chain with auto-fallback and retries
+      const verifyRes = await fetchWithFallback('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -932,7 +933,7 @@ export function DisconnectModal({ user, onDisconnect, onClose }: DisconnectProps
 // ── Edit Profile Modal Dial ──
 interface EditProps {
   user: User;
-  onSave: (updated: User) => void;
+  onSave: (updated: User) => Promise<void>;
   onClose: () => void;
 }
 
@@ -940,8 +941,9 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
   const [username, setUsername] = useState(user.username);
   const [hideWallet, setHideWallet] = useState(user.hideWallet);
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  function handleSave() {
+  async function handleSave() {
     const trimmed = username.trim();
     if (!trimmed || trimmed.length < 3) {
       setError('Username must be at least 3 characters.');
@@ -951,17 +953,26 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
       setError('Only letters, numbers, and underscores are compiled.');
       return;
     }
+    
     setError('');
-    onSave({
-      ...user,
-      username: trimmed,
-      hideWallet,
-    });
+    setIsSaving(true);
+    try {
+      await onSave({
+        ...user,
+        username: trimmed,
+        hideWallet,
+      });
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Sync failed. Check your network or try a alternative handle.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
     <div className="fixed inset-0 z-[200] overflow-y-auto animate-fade-in" id="edit-profile-modal-overlay">
-      <div onClick={onClose} className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" />
+      <div onClick={isSaving ? undefined : onClose} className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" />
       <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
         <div className="relative w-full max-w-[400px]" style={{ animation: 'fadeUp 0.25s ease' }}>
           <GlassCard style={{ padding: 28 }}>
@@ -971,7 +982,8 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
             </h3>
             <button 
               onClick={onClose}
-              className="text-slate-400 hover:text-white text-xs bg-transparent border-none cursor-pointer"
+              disabled={isSaving}
+              className="text-slate-400 hover:text-white text-xs bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ✕
             </button>
@@ -987,14 +999,15 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
                 <input
                   type="text"
                   value={username}
+                  disabled={isSaving}
                   onChange={e => { setUsername(e.target.value); setError(''); }}
-                  className="w-full pl-8 pr-4 py-3 rounded-xl border bg-white/[0.03] text-slate-100 text-sm font-medium outline-none transition-all placeholder:text-slate-600 focus:bg-white/[0.05]"
+                  className="w-full pl-8 pr-4 py-3 rounded-xl border bg-white/[0.03] text-slate-100 text-sm font-medium outline-none transition-all placeholder:text-slate-600 focus:bg-white/[0.05] disabled:opacity-50"
                   style={{
                     borderColor: error ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)',
                   }}
                 />
               </div>
-              {error && <p className="text-rose-400 text-xs mt-1.5">{error}</p>}
+              {error && <p className="text-rose-400 text-xs mt-1.5 leading-relaxed">{error}</p>}
             </div>
 
             <div className="p-4 rounded-xl bg-white/[0.015] border border-white/[0.05] flex items-center justify-between gap-4">
@@ -1003,8 +1016,9 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
                 <div className="text-[10px] text-slate-500 mt-0.5">Hides addresses in leaderboards.</div>
               </div>
               <button
-                onClick={() => setHideWallet(prev => !prev)}
-                className="w-11 h-6 rounded-full relative transition-all border outline-none cursor-pointer"
+                onClick={() => !isSaving && setHideWallet(prev => !prev)}
+                disabled={isSaving}
+                className="w-11 h-6 rounded-full relative transition-all border outline-none cursor-pointer disabled:opacity-50"
                 style={{
                   backgroundColor: hideWallet ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.06)',
                   borderColor: hideWallet ? '#a78bfa' : 'rgba(255,255,255,0.08)',
@@ -1020,19 +1034,26 @@ export function EditProfileModal({ user, onSave, onClose }: EditProps) {
             <div className="flex gap-3 pt-2">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl border border-white/5 bg-white/5 text-slate-300 text-xs hover:bg-white/10 transition-all cursor-pointer"
+                disabled={isSaving}
+                className="flex-1 py-3 rounded-xl border border-white/5 bg-white/5 text-slate-300 text-xs hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 py-3 rounded-xl text-white font-extrabold text-xs hover:opacity-90 transition-all cursor-pointer"
+                disabled={isSaving}
+                className="flex-1 py-3 rounded-xl text-white font-extrabold text-xs hover:opacity-90 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 style={{
                   background: 'linear-gradient(135deg, #a78bfa, #818cf8)',
                   fontFamily: "'Syne', sans-serif"
                 }}
               >
-                Save Changes
+                {isSaving ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                    Saving...
+                  </>
+                ) : 'Save Changes'}
               </button>
             </div>
           </div>

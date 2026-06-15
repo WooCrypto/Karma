@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://ais-pre-6wdjsh77mxlo43trbw7pj5-274157962229.us-east1.run.app/api/:path*"
+    },
+    {
+      "source": "/passport/img/:path*",
+      "destination": "https://ais-pre-6wdjsh77mxlo43trbw7pj5-274157962229.us-east1.run.app/passport/img/:path*"
+    },
+    {
+      "source": "/share/passport/:path*",
+      "destination": "https://ais-pre-6wdjsh77mxlo43trbw7pj5-274157962229.us-east1.run.app/share/passport/:path*"
+    }
+  ]
+}

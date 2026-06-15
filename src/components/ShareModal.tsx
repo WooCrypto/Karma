@@ -3,6 +3,7 @@ import { User } from '../types';
 import { getAura, PERSONALITIES, truncateWallet } from '../constants';
 import GlassCard from './GlassCard';
 import { Twitter } from 'lucide-react';
+import { fetchWithFallback } from '../utils/api';
 
 export function getLoanLimit(karmaScore: number): number {
   const scaledScoreForCalc = Math.max(0, Math.min(100, Math.round((karmaScore - 300) / 5.5)));
@@ -50,7 +51,7 @@ export default function ShareModal({ user, onClose }: ShareModalProps) {
           await drawPassport(canvasRef.current);
           const dataUrl = canvasRef.current.toDataURL('image/png');
           
-          const res = await fetch('/api/passport/save', {
+          const res = await fetchWithFallback('/api/passport/save', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

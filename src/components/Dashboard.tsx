@@ -15,6 +15,7 @@ import WalletArena from './WalletArena';
 import KastBooster from './KastBooster';
 import AuraAirdropPortal from './AuraAirdropPortal';
 import KarmaPulseWidget from './KarmaPulseWidget';
+import { fetchWithFallback } from '../utils/api';
 
 interface DashboardProps {
   user: User;
@@ -136,7 +137,7 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser, onNavigate
   useEffect(() => {
     if (user && user.username) {
       setLoadingInvites(true);
-      fetch(`/api/referrals/${encodeURIComponent(user.username)}`)
+      fetchWithFallback(`/api/referrals/${encodeURIComponent(user.username)}`)
         .then(res => {
           if (res.ok) return res.json();
           throw new Error('Failed to load referrals');

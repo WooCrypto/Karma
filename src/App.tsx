@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Wallet } from './types';
+import { fetchWithFallback } from './utils/api';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
@@ -268,14 +269,15 @@ export default function App() {
   }
 
   async function handleProfileSave(updated: User) {
-    setUser(updated);
-    setShowEdit(false);
+    const oldUser = user;
     
     try {
+      // Optimistic update of local states to keep interface active
+      setUser(updated);
       localStorage.setItem('karma_user_session', JSON.stringify(updated));
       
-      // Update persistent database dynamically
-      await fetch('/api/auth/verify', {
+      // Update persistent database dynamically with robust fallback and retry handlers
+      const response = await fetchWithFallback('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -286,8 +288,54 @@ export default function App() {
           wallet: updated.wallet
         })
       });
-    } catch (err) {
-      console.warn('Backend sync failed:', err);
+
+      if (!response.ok) {
+        const text = await response.text();
+        let message = `Server error [HTTP ${response.status}]`;
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && parsed.error) {
+            message = parsed.error;
+          } else {
+            message = `Server error [HTTP ${response.status}]: ${text.slice(0, 80)}`;
+          }
+        } catch (_) {
+          if (text) {
+            message = `Server error [HTTP ${response.status}]: ${text.slice(0, 80)}`;
+          }
+        }
+        throw new Error(message);
+      }
+
+      const savedProfile = await response.json();
+      if (savedProfile && savedProfile.error) {
+        throw new Error(savedProfile.error);
+      }
+
+      // Fully align the state with parsed/saved database record
+      const fullySynced = {
+        ...updated,
+        ...savedProfile,
+        // Preserve essential frontend assets if not returned
+        wallet: updated.wallet,
+        address: updated.address
+      };
+      setUser(fullySynced);
+      localStorage.setItem('karma_user_session', JSON.stringify(fullySynced));
+
+    } catch (err: any) {
+      console.warn('Backend sync failed after fallback attempts:', err?.message || err);
+      
+      // Rollback to consistent user state
+      setUser(oldUser);
+      if (oldUser) {
+        localStorage.setItem('karma_user_session', JSON.stringify(oldUser));
+      } else {
+        localStorage.removeItem('karma_user_session');
+      }
+      
+      // Throw to let the UI Edit modal handle the display of error message
+      throw new Error(err?.message || 'Synchronization failed. Unable to map changes with the index server.');
     }
   }
 

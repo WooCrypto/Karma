@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User, Reading } from '../types';
 import GlassCard from './GlassCard';
 import { Download, CheckCircle2 } from 'lucide-react';
+import { fetchWithFallback } from '../utils/api';
 
 interface AIReadingProps {
   user: User;
@@ -123,7 +124,7 @@ This reputation audit was compiled using on-chain consensus history.
     setErrorMessage('');
 
     try {
-      const res = await fetch('/api/gemini/reading', {
+      const res = await fetchWithFallback('/api/gemini/reading', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

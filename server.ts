@@ -68,6 +68,20 @@ function rateLimiter(req: express.Request, res: express.Response, next: express.
 
 app.use(rateLimiter);
 
+// ── SECURITY: CORS Config to allow custom domain requests seamlessly ──
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
 // ── SECURITY: Alphanumeric Handle Validation Middleware ──
 function validateProfileInput(username: string): string | null {
   if (!username) return 'Username handle is required.';
@@ -130,6 +144,16 @@ app.post('/api/auth/verify', async (req, res) => {
     const usernameError = validateProfileInput(username);
     if (usernameError) {
       return res.status(400).json({ error: usernameError });
+    }
+
+    // Check if the username is already registered to a different wallet address
+    const normalizedUsername = username.trim().toLowerCase();
+    const allProfiles = await getAllProfiles();
+    const clash = allProfiles.find(
+      p => p && p.username?.toLowerCase() === normalizedUsername && p.address?.toLowerCase() !== address.toLowerCase()
+    );
+    if (clash) {
+      return res.status(400).json({ error: 'This pseudonym handle is already registered to another wallet.' });
     }
 
     const isSandboxAddress = address.length !== 42 || !address.toLowerCase().startsWith('0x');
