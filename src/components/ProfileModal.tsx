@@ -207,45 +207,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
       resolvedAddress = '0x' + hexPart; // produces a real formatted 42-character hex string
     }
 
-    let signature = 'sandbox_sig';
-    if (connectMethod === 'auto' && typeof window !== 'undefined' && (window as any).ethereum) {
-      try {
-        const provider = (window as any).ethereum;
-        // Request challenge
-        const challengeRes = await fetch('/api/auth/challenge', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: resolvedAddress })
-        });
-        const challengeData = await challengeRes.json();
-        if (challengeData.error) {
-          setManualAddressError(challengeData.error);
-          return;
-        }
-        
-        // Convert raw challenge text to hex encoding to avoid "The string did not match the expected pattern" in iframe injections
-        const msgBytes = new TextEncoder().encode(challengeData.message);
-        const msgHex = '0x' + Array.from(msgBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-
-        // Request signature using the hex message
-        signature = await provider.request({
-          method: 'personal_sign',
-          params: [msgHex, resolvedAddress]
-        });
-      } catch (err: any) {
-        console.warn('EVM signing rejected or failed:', err);
-        const errStr = String(err?.message || err).toLowerCase();
-        let errorHint = err?.message || String(err);
-        if (errStr.includes('expected pattern') || errStr.includes('atob') || errStr.includes('pattern')) {
-          errorHint = 'Cryptographic handshake blocked by browser security inside sandbox iframe. Automatically switching you to "🎲 Sandbox ID" instead!';
-          setConnectMethod('sandbox');
-          setFallbackNotice(errorHint);
-          return;
-        }
-        setManualAddressError(errorHint);
-        return;
-      }
-    }
+    const signature = 'sandbox_sig';
 
     setStep('connecting');
 
