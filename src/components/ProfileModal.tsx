@@ -230,6 +230,17 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           wallet: selectedWallet
         })
       });
+      if (!verifyRes.ok) {
+        const errText = await verifyRes.text();
+        let errMsg = 'Failed to synchronize reputation passport with the index server.';
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed && parsed.error) errMsg = parsed.error;
+        } catch (_) {}
+        setStep('setup');
+        setManualAddressError(errMsg);
+        return;
+      }
       const profile = await verifyRes.json();
       if (profile.error) {
         setStep('setup');

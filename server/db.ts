@@ -158,6 +158,35 @@ export async function getChallenge(address: string): Promise<string | null> {
   }
 }
 
+export interface ChallengeRecord {
+  address: string;
+  challenge: string;
+  createdAt: number;
+}
+
+export async function getChallengeRecord(address: string): Promise<ChallengeRecord | null> {
+  const normalized = address.toLowerCase();
+  const pathStr = `challenges/${normalized}`;
+  try {
+    const docRef = doc(db, 'challenges', normalized);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    if (Date.now() - data.createdAt > 5 * 60 * 1000) {
+      await deleteDoc(docRef);
+      return null;
+    }
+    return {
+      address: data.address,
+      challenge: data.challenge,
+      createdAt: data.createdAt
+    };
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, pathStr);
+    return null;
+  }
+}
+
 export async function clearChallenge(address: string): Promise<void> {
   const normalized = address.toLowerCase();
   const pathStr = `challenges/${normalized}`;

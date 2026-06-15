@@ -11,6 +11,7 @@ import { ethers } from 'ethers';
 import { 
   createChallenge, 
   getChallenge, 
+  getChallengeRecord,
   clearChallenge, 
   saveUserProfile, 
   getUserProfile, 
@@ -135,29 +136,20 @@ app.post('/api/auth/verify', async (req, res) => {
     
     // Standard EVM Verify logic using ethers if not sandbox (or if a signature is supplied)
     if (!isSandboxAddress && signature && signature !== 'sandbox_sig') {
-      const savedChallenge = await getChallenge(address);
-      if (!savedChallenge) {
+      const challengeRecord = await getChallengeRecord(address);
+      if (!challengeRecord) {
         return res.status(400).json({ error: 'Signature session challenge has expired. Request a new login check-in.' });
       }
 
       try {
-        const messageToReconstruct = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${savedChallenge}`;
+        const messageToReconstruct = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${challengeRecord.challenge}`;
         
-        // Use ethers to extract signing address
-        let resolvedAddress = '';
-        
-        // Search through the challenge directories
-        const possibleMessage = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${savedChallenge}`;
-        
-        // We will verify against standard messages structure
-        resolvedAddress = ethers.verifyMessage(possibleMessage, signature);
+        let resolvedAddress = ethers.verifyMessage(messageToReconstruct, signature);
         
         if (resolvedAddress.toLowerCase() !== address.toLowerCase()) {
           // Attempt verification on timestamp-appended structured layouts as fallback
-          const rawFiles = fs.readFileSync(path.join(PASSPORTS_DIR, 'auth_challenges.json'), 'utf-8');
-          const directory = JSON.parse(rawFiles || '{}');
-          const timestamp = directory[address.toLowerCase()]?.createdAt || Date.now();
-          const timestampMessage = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${savedChallenge}\nTimestamp: ${timestamp}`;
+          const timestamp = challengeRecord.createdAt;
+          const timestampMessage = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${challengeRecord.challenge}\nTimestamp: ${timestamp}`;
           resolvedAddress = ethers.verifyMessage(timestampMessage, signature);
         }
 

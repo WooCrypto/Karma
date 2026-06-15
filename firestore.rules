@@ -33,11 +33,12 @@ service cloud.firestore {
       
       allow create: if (
         incoming().address is string && 
-        incoming().address.size() == 42 &&
+        incoming().address.size() >= 4 &&
+        incoming().address.size() <= 128 &&
         incoming().username is string && 
         incoming().username.size() >= 3 && 
         incoming().username.size() <= 20 &&
-        incoming().karmaScore is int &&
+        incoming().karmaScore is number &&
         incoming().karmaScore >= 0 &&
         incoming().karmaScore <= 1000
       );
@@ -47,7 +48,7 @@ service cloud.firestore {
         incoming().username is string &&
         incoming().username.size() >= 3 &&
         incoming().username.size() <= 20 &&
-        incoming().karmaScore is int &&
+        incoming().karmaScore is number &&
         incoming().karmaScore >= 0 &&
         incoming().karmaScore <= 1000
       );
@@ -60,8 +61,8 @@ service cloud.firestore {
       allow get: if true;
       allow create, update: if (
         incoming().address is string &&
-        incoming().address.size() >= 10 &&
-        incoming().address.size() <= 64 &&
+        incoming().address.size() >= 4 &&
+        incoming().address.size() <= 128 &&
         incoming().challenge is string &&
         incoming().challenge.size() <= 128
       );
