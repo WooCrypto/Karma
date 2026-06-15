@@ -33,6 +33,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
   const [connectMethod, setConnectMethod] = useState<'auto' | 'manual' | 'sandbox'>('auto');
   const [manualAddress, setManualAddress] = useState('');
   const [manualAddressError, setManualAddressError] = useState('');
+  const [fallbackNotice, setFallbackNotice] = useState('');
 
   // WalletConnect pairing state simulation
   const [pairingStatus, setPairingStatus] = useState<'idle' | 'linking'>('idle');
@@ -151,6 +152,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
     }
 
     setUsernameError('');
+    setManualAddressError('');
     let resolvedAddress = '';
 
     if (connectMethod === 'manual') {
@@ -237,6 +239,8 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
         if (errStr.includes('expected pattern') || errStr.includes('atob') || errStr.includes('pattern')) {
           errorHint = 'Cryptographic handshake blocked by browser security inside sandbox iframe. Automatically switching you to "🎲 Sandbox ID" instead!';
           setConnectMethod('sandbox');
+          setFallbackNotice(errorHint);
+          return;
         }
         setManualAddressError(errorHint);
         return;
@@ -291,7 +295,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
       }, 4200);
     } catch (err: any) {
       setStep('setup');
-      setManualAddressError('Failed to synchronize reputation passport with the index server.');
+      setManualAddressError(err?.message || 'Failed to synchronize reputation passport with the index server.');
     }
   }
 
@@ -545,6 +549,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                       onClick={() => {
                         setConnectMethod(method.id as any);
                         setManualAddressError('');
+                        setFallbackNotice('');
                       }}
                       className="py-2.5 rounded-lg text-[10px] font-bold font-sans cursor-pointer transition-all border-none focus:outline-none"
                       style={{
@@ -557,6 +562,22 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                   ))}
                 </div>
               </div>
+
+              {fallbackNotice && (
+                <div className="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/15 space-y-1.5 animate-fade-in text-slate-300 text-left">
+                  <div className="font-bold flex items-center justify-between text-amber-400 font-mono text-[10px] uppercase tracking-wider">
+                    <span>⚠️ Handshake Intercepted</span>
+                    <button 
+                      type="button"
+                      onClick={() => setFallbackNotice('')}
+                      className="hover:text-white border-none bg-none cursor-pointer p-0 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-300 leading-relaxed font-sans">{fallbackNotice}</p>
+                </div>
+              )}
 
               {/* Username Input Container */}
               <div>

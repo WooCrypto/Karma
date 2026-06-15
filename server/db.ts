@@ -125,41 +125,142 @@ export function clearCache(address: string): void {
   cacheMap.delete(address.toLowerCase());
 }
 
+// --- Local File System Persistent Backups / Fallbacks ---
+const LOCAL_DIR = path.join(process.cwd(), 'passports_saved');
+if (!fs.existsSync(LOCAL_DIR)) {
+  try {
+    fs.mkdirSync(LOCAL_DIR, { recursive: true });
+  } catch (err) {
+    console.error('[DB] Failed to create passports_saved directory:', err);
+  }
+}
+
+function saveProfileLocal(address: string, profile: UserProfile): void {
+  try {
+    const filePath = path.join(LOCAL_DIR, `profiles_${address.toLowerCase()}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(profile, null, 2), 'utf-8');
+  } catch (err) {
+    console.error(`[DB] Failed to save profile locally for ${address}:`, err);
+  }
+}
+
+function getProfileLocal(address: string): UserProfile | null {
+  try {
+    const filePath = path.join(LOCAL_DIR, `profiles_${address.toLowerCase()}.json`);
+    if (!fs.existsSync(filePath)) return null;
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(content) as UserProfile;
+  } catch (err) {
+    console.error(`[DB] Failed to read local profile for ${address}:`, err);
+    return null;
+  }
+}
+
+function getAllProfilesLocal(): UserProfile[] {
+  try {
+    const files = fs.readdirSync(LOCAL_DIR);
+    const list: UserProfile[] = [];
+    for (const file of files) {
+      if (file.startsWith('profiles_') && file.endsWith('.json')) {
+        try {
+          const content = fs.readFileSync(path.join(LOCAL_DIR, file), 'utf-8');
+          list.push(JSON.parse(content));
+        } catch (e) {}
+      }
+    }
+    return list;
+  } catch (err) {
+    console.error('[DB] Failed to list local profiles:', err);
+    return [];
+  }
+}
+
+function saveChallengeLocal(address: string, data: any): void {
+  try {
+    const filePath = path.join(LOCAL_DIR, `challenges_${address.toLowerCase()}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error(`[DB] Failed to save challenge locally for ${address}:`, err);
+  }
+}
+
+function getChallengeLocal(address: string): any | null {
+  try {
+    const filePath = path.join(LOCAL_DIR, `challenges_${address.toLowerCase()}.json`);
+    if (!fs.existsSync(filePath)) return null;
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch (err) {
+    return null;
+  }
+}
+
+function deleteChallengeLocal(address: string): void {
+  try {
+    const filePath = path.join(LOCAL_DIR, `challenges_${address.toLowerCase()}.json`);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (e) {}
+}
+
+// Promise race helper to ensure Firestore never blocks node process
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore connection request timed out')), timeoutMs)
+    )
+  ]);
+}
+
 // --- Challenges Store (Web Interface Auth Handshaking) ---
 export async function createChallenge(address: string): Promise<string> {
   const normalized = address.toLowerCase();
   const challenge = crypto.randomUUID();
-  const pathStr = `challenges/${normalized}`;
+  const record = {
+    address: normalized,
+    challenge,
+    createdAt: Date.now()
+  };
+
+  // Immediate Local Cache Commit
+  saveChallengeLocal(normalized, record);
+
   try {
-    await setDoc(doc(db, 'challenges', normalized), {
-      address: normalized,
-      challenge,
-      createdAt: Date.now()
-    });
-    return challenge;
+    await withTimeout(setDoc(doc(db, 'challenges', normalized), record), 2500);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, pathStr);
-    return challenge;
+    console.warn(`[DB] Cloud Firestore challenge write failed or timed out. Handled via local fallback. Reason:`, err instanceof Error ? err.message : err);
   }
+  return challenge;
 }
 
 export async function getChallenge(address: string): Promise<string | null> {
   const normalized = address.toLowerCase();
-  const pathStr = `challenges/${normalized}`;
-  try {
-    const docRef = doc(db, 'challenges', normalized);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) return null;
-    const data = snap.data();
-    if (Date.now() - data.createdAt > 5 * 60 * 1000) {
-      await deleteDoc(docRef);
+  const localChal = getChallengeLocal(normalized);
+  if (localChal) {
+    if (Date.now() - localChal.createdAt > 5 * 60 * 1000) {
+      deleteChallengeLocal(normalized);
       return null;
     }
-    return data.challenge;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, pathStr);
-    return null;
   }
+
+  try {
+    const docRef = doc(db, 'challenges', normalized);
+    const snap = await withTimeout(getDoc(docRef), 2500);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Date.now() - data.createdAt > 5 * 60 * 1000) {
+        await deleteDoc(docRef);
+        return null;
+      }
+      return data.challenge;
+    }
+  } catch (err) {
+    console.warn(`[DB] Cloud Firestore challenge read failed or timed out. Falling back to local copy. Reason:`, err instanceof Error ? err.message : err);
+  }
+
+  return localChal ? localChal.challenge : null;
 }
 
 export interface ChallengeRecord {
@@ -170,84 +271,117 @@ export interface ChallengeRecord {
 
 export async function getChallengeRecord(address: string): Promise<ChallengeRecord | null> {
   const normalized = address.toLowerCase();
-  const pathStr = `challenges/${normalized}`;
-  try {
-    const docRef = doc(db, 'challenges', normalized);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) return null;
-    const data = snap.data();
-    if (Date.now() - data.createdAt > 5 * 60 * 1000) {
-      await deleteDoc(docRef);
+  const localChal = getChallengeLocal(normalized);
+  if (localChal) {
+    if (Date.now() - localChal.createdAt > 5 * 60 * 1000) {
+      deleteChallengeLocal(normalized);
       return null;
     }
-    return {
-      address: data.address,
-      challenge: data.challenge,
-      createdAt: data.createdAt
-    };
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, pathStr);
-    return null;
   }
+
+  try {
+    const docRef = doc(db, 'challenges', normalized);
+    const snap = await withTimeout(getDoc(docRef), 2500);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Date.now() - data.createdAt > 5 * 60 * 1000) {
+        return null;
+      }
+      return {
+        address: data.address,
+        challenge: data.challenge,
+        createdAt: data.createdAt
+      };
+    }
+  } catch (err) {
+    console.warn(`[DB] Cloud Firestore challenge record read failed or timed out. Falling back to local copy. Reason:`, err instanceof Error ? err.message : err);
+  }
+
+  return localChal ? {
+    address: localChal.address,
+    challenge: localChal.challenge,
+    createdAt: localChal.createdAt
+  } : null;
 }
 
 export async function clearChallenge(address: string): Promise<void> {
   const normalized = address.toLowerCase();
-  const pathStr = `challenges/${normalized}`;
+  deleteChallengeLocal(normalized);
+
   try {
-    await deleteDoc(doc(db, 'challenges', normalized));
+    await withTimeout(deleteDoc(doc(db, 'challenges', normalized)), 2000);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, pathStr);
+    console.warn(`[DB] Cloud Firestore challenge delete failed or timed out. Reason:`, err instanceof Error ? err.message : err);
   }
 }
 
 // --- Permanent Database System via Cloud Firestore ---
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
-  const pathStr = `profiles/${profile.address.toLowerCase()}`;
+  const normalized = profile.address.toLowerCase();
+  
+  // Synced instantly in Cache and Local Disk
+  setCachedScore(profile.address, profile);
+  saveProfileLocal(normalized, profile);
+
   try {
-    await setDoc(doc(db, 'profiles', profile.address.toLowerCase()), profile);
-    // Synced in cache
-    setCachedScore(profile.address, profile);
+    await withTimeout(setDoc(doc(db, 'profiles', normalized), profile), 3000);
+    console.log(`[DB] Successfully synchronized profile with Cloud Firestore database: ${normalized}`);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, pathStr);
+    console.warn(`[DB] Cloud Firestore write failed or timed out. Data safely persisted and retrieved locally. Reason:`, err instanceof Error ? err.message : err);
   }
 }
 
 export async function getUserProfile(address: string): Promise<UserProfile | null> {
+  const normalized = address.toLowerCase();
+  
   // Try Cache first
-  const cached = getCachedScore(address);
+  const cached = getCachedScore(normalized);
   if (cached) {
-    console.log(`[DB] In-Memory Cache HIT for wallet address: ${address}`);
+    console.log(`[DB] In-Memory Cache HIT for wallet address: ${normalized}`);
     return cached;
   }
   
-  console.log(`[DB] Cache MISS. Loading Firestore database record for: ${address}`);
-  const pathStr = `profiles/${address.toLowerCase()}`;
-  try {
-    const snap = await getDoc(doc(db, 'profiles', address.toLowerCase()));
-    if (!snap.exists()) return null;
-    const profile = snap.data() as UserProfile;
-    setCachedScore(address, profile);
-    return profile;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, pathStr);
-    return null;
+  // Try Local Disk second
+  const localProf = getProfileLocal(normalized);
+  if (localProf) {
+    console.log(`[DB] Local Disk Backup HIT for wallet address: ${normalized}`);
+    setCachedScore(normalized, localProf);
   }
+
+  try {
+    console.log(`[DB] Querying Cloud Firestore database record for: ${normalized}`);
+    const snap = await withTimeout(getDoc(doc(db, 'profiles', normalized)), 3000);
+    if (snap.exists()) {
+      const dbProfile = snap.data() as UserProfile;
+      saveProfileLocal(normalized, dbProfile);
+      setCachedScore(normalized, dbProfile);
+      return dbProfile;
+    }
+  } catch (err) {
+    console.warn(`[DB] Cloud Firestore read failed or timed out. Falling back to local profile registry. Reason:`, err instanceof Error ? err.message : err);
+  }
+
+  return localProf;
 }
 
 export async function getAllProfiles(): Promise<UserProfile[]> {
-  const pathStr = 'profiles';
+  const localList = getAllProfilesLocal();
+  const indexMap = new Map<string, UserProfile>(localList.map(p => [p.address.toLowerCase(), p]));
+
   try {
-    const snap = await getDocs(collection(db, 'profiles'));
-    const list: UserProfile[] = [];
+    const snap = await withTimeout(getDocs(collection(db, 'profiles')), 4000);
     snap.forEach((doc) => {
-      list.push(doc.data() as UserProfile);
+      const profile = doc.data() as UserProfile;
+      const normalized = profile.address.toLowerCase();
+      indexMap.set(normalized, profile);
+      saveProfileLocal(normalized, profile);
+      setCachedScore(normalized, profile);
     });
-    return list;
   } catch (err) {
-    handleFirestoreError(err, OperationType.LIST, pathStr);
-    return [];
+    console.warn(`[DB] Cloud Firestore list profiles failed or timed out. Displaying local registry index. Reason:`, err instanceof Error ? err.message : err);
   }
+
+  return Array.from(indexMap.values());
 }
 
 export async function triggerDailyScoreUpdates(): Promise<void> {
