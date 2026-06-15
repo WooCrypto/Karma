@@ -68,5 +68,22 @@ service cloud.firestore {
       );
       allow delete: if true; // Server/client can clear stale challenges after use
     }
+
+    // --- POLICY GATE: SYNC SESSIONS ---
+    match /sync_sessions/{id} {
+      allow get: if true; // Both desktop client and outpost link need to lookup status
+      allow create: if (
+        incoming().id == id &&
+        incoming().status == 'pending' &&
+        incoming().challenge is string &&
+        incoming().createdAt is number
+      );
+      allow update: if (
+        existing().status == 'pending' &&
+        (incoming().status == 'signed' || incoming().status == 'error') &&
+        incoming().createdAt == existing().createdAt
+      );
+      allow delete: if true; // Allowed to clean up expired/finished sessions
+    }
   }
 }

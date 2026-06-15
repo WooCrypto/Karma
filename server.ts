@@ -17,7 +17,11 @@ import {
   getUserProfile, 
   getAllProfiles, 
   triggerDailyScoreUpdates,
-  UserProfile
+  UserProfile,
+  createSyncSession,
+  getSyncSession,
+  updateSyncSession,
+  deleteSyncSession
 } from './server/db';
 import { computeKarmaProfile } from './server/scoreCalculator';
 
@@ -210,6 +214,145 @@ app.get('/api/profile/:address', async (req, res) => {
     res.json(profile);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API Endpoint: Create a new out-of-browser Wallet Sync Session ──
+app.post('/api/sync/create', async (req, res) => {
+  try {
+    const { username, hideWallet, wallet } = req.body;
+    
+    const sessionId = 'session_' + crypto.randomBytes(8).toString('hex');
+    const challenge = crypto.randomUUID();
+    const challengeMessage = `Sign this message to complete your out-of-browser Sync Challenge for the KARMA reputation passport.\n\nSession Code: ${sessionId}\nChallenge Code: ${challenge}\nTimestamp: ${Date.now()}`;
+    
+    await createSyncSession(sessionId, {
+      id: sessionId,
+      status: 'pending',
+      username: username || '',
+      hideWallet: !!hideWallet,
+      wallet: wallet || { id: 'walletconnect', name: 'WalletConnect', icon: '◈', color: '#3b99fc', desc: 'Any mobile wallet' },
+      challenge,
+      message: challengeMessage,
+      createdAt: Date.now()
+    });
+    
+    const protocol = req.headers['x-forwarded-proto'] === 'https' || req.secure ? 'https' : 'http';
+    const host = req.get('host');
+    const syncUrl = `${protocol}://${host}/sync?session=${sessionId}`;
+    
+    res.json({
+      sessionId,
+      message: challengeMessage,
+      syncUrl
+    });
+  } catch (err: any) {
+    console.error('[SYNC] Create error:', err);
+    res.status(500).json({ error: err.message || 'Failed to create sync session' });
+  }
+});
+
+// ── API Endpoint: Get state of an out-of-browser Sync Session ──
+app.get('/api/sync/status/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await getSyncSession(sessionId);
+    
+    if (!session) {
+      return res.status(404).json({ error: 'Sync session not found or expired.' });
+    }
+    
+    const isExpired = Date.now() - session.createdAt > 5 * 60 * 1000; // 5 minutes expiration
+    if (isExpired) {
+      await deleteSyncSession(sessionId).catch(() => {});
+      return res.json({ status: 'expired' });
+    }
+    
+    res.json({
+      status: session.status,
+      address: session.address,
+      username: session.username,
+      profile: session.profile
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API Endpoint: Submit credentials/signature from outside Safari/Google browser ──
+app.post('/api/sync/submit', async (req, res) => {
+  try {
+    const { sessionId, address, signature, wallet } = req.body;
+    
+    if (!sessionId || !address || !signature) {
+      return res.status(400).json({ error: 'Session ID, address, and signature signature are required.' });
+    }
+    
+    const session = await getSyncSession(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Sync session not found or expired.' });
+    }
+    
+    if (session.status !== 'pending') {
+      return res.status(400).json({ error: 'This sync session is no longer in pending status.' });
+    }
+    
+    const isExpired = Date.now() - session.createdAt > 5 * 60 * 1000;
+    if (isExpired) {
+      await deleteSyncSession(sessionId).catch(() => {});
+      return res.status(400).json({ error: 'This sync session has expired. Start a new session.' });
+    }
+    
+    // Verify cryptographic signature
+    try {
+      let resolvedAddress = ethers.verifyMessage(session.message, signature);
+      
+      if (resolvedAddress.toLowerCase() !== address.toLowerCase()) {
+        return res.status(401).json({ error: 'Cryptographic signature mismatch. Failed to verify possession of this public address on-chain.' });
+      }
+    } catch (cryptoErr: any) {
+      console.error('[SYNC] Signature parsing failed:', cryptoErr);
+      return res.status(400).json({ error: 'Invalid hex signature payload format.' });
+    }
+    
+    // Prepare sovereign reputation profile
+    let profile = await getUserProfile(address);
+    if (!profile) {
+      console.log(`[DB] Sync-creating new ledger identity record for address: ${address}`);
+      const selectedWallet = wallet || session.wallet || { id: 'walletconnect', name: 'WalletConnect', icon: '◈', color: '#3b99fc', desc: 'Any mobile wallet' };
+      
+      profile = computeKarmaProfile(
+        address,
+        session.username,
+        selectedWallet.id,
+        selectedWallet.name,
+        selectedWallet.icon,
+        selectedWallet.color,
+        selectedWallet.desc,
+        !!session.hideWallet
+      );
+      await saveUserProfile(profile);
+    } else {
+      // Keep username if set on originating screen
+      if (session.username) {
+        profile.username = session.username;
+      }
+      profile.hideWallet = !!session.hideWallet;
+      await saveUserProfile(profile);
+    }
+    
+    // Upgrade state block
+    await updateSyncSession(sessionId, {
+      status: 'signed',
+      address,
+      signature,
+      profile
+    });
+    
+    res.json({ success: true, profile });
+  } catch (err: any) {
+    console.error('[SYNC] Submit error:', err);
+    res.status(500).json({ error: err.message || 'Synchronization verification crashed.' });
   }
 });
 
