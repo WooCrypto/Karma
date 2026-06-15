@@ -18,90 +18,9 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
   const [savedProfile, setSavedProfile] = useState<any | null>(null);
 
   // Connection options state: auto web3, manual paste, sandbox template
-  const [connectMethod, setConnectMethod] = useState<'auto' | 'manual' | 'sandbox' | 'outsidesync'>('auto');
+  const [connectMethod, setConnectMethod] = useState<'auto' | 'manual' | 'sandbox'>('auto');
   const [manualAddress, setManualAddress] = useState('');
   const [manualAddressError, setManualAddressError] = useState('');
-
-  // Out-of-browser syncing states
-  const [syncSessionId, setSyncSessionId] = useState<string | null>(null);
-  const [syncUrl, setSyncUrl] = useState<string>('');
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'generating' | 'waiting' | 'success' | 'expired' | 'error'>('idle');
-  const [syncError, setSyncError] = useState<string | null>(null);
-
-  // Poll for external signature results
-  useEffect(() => {
-    if (syncStatus !== 'waiting' || !syncSessionId) return;
-
-    let isSubscribed = true;
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/sync/status/${syncSessionId}`);
-        if (!res.ok) throw new Error('Status node check failure');
-        const data = await res.json();
-        
-        if (!isSubscribed) return;
-
-        if (data.status === 'signed' && data.profile) {
-          clearInterval(interval);
-          setSyncStatus('success');
-          
-          // Complete verification flow with authenticated data block
-          setTimeout(() => {
-            onConnect({
-              wallet: selectedWallet || { id: 'walletconnect', name: 'WalletConnect', icon: '◈', color: '#3b99fc', desc: 'Any mobile wallet' },
-              username: data.username || username || 'sync_user',
-              hideWallet: hideWallet,
-              address: data.address,
-              profile: data.profile
-            } as any);
-          }, 1000);
-        } else if (data.status === 'expired') {
-          clearInterval(interval);
-          setSyncStatus('expired');
-          setSyncError('Handshake session expired. Please regenerate your code.');
-        }
-      } catch (err: any) {
-        console.warn('[POLL] Sync status check missed:', err);
-      }
-    }, 2000);
-
-    return () => {
-      isSubscribed = false;
-      clearInterval(interval);
-    };
-  }, [syncStatus, syncSessionId, selectedWallet, username, hideWallet]);
-
-  async function generateSyncSession() {
-    const trimmed = username.trim();
-    if (!trimmed) {
-      setUsernameError('Please enter a username handle before generating a sync session.');
-      return;
-    }
-    setUsernameError('');
-    setSyncError(null);
-    setSyncStatus('generating');
-    try {
-      const res = await fetch('/api/sync/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: trimmed,
-          hideWallet,
-          wallet: selectedWallet || { id: 'walletconnect', name: 'WalletConnect', icon: '◈', color: '#3b99fc', desc: 'Any mobile wallet' }
-        })
-      });
-      if (!res.ok) {
-        throw new Error('Verification network rejected generation request.');
-      }
-      const data = await res.json();
-      setSyncSessionId(data.sessionId);
-      setSyncUrl(data.syncUrl);
-      setSyncStatus('waiting');
-    } catch (err: any) {
-      setSyncStatus('error');
-      setSyncError(err.message || 'Signature synchronization node setup failed.');
-    }
-  }
 
   // WalletConnect pairing state simulation
   const [pairingStatus, setPairingStatus] = useState<'idle' | 'linking'>('idle');
@@ -585,10 +504,9 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                 <label className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1.5 block font-bold">
                   Credentials Source
                 </label>
-                <div className="grid grid-cols-2 gap-1.5 bg-slate-950/60 p-1.5 rounded-xl border border-white/[0.05]">
+                <div className="grid grid-cols-3 gap-1 bg-slate-950/60 p-1 rounded-xl border border-white/[0.05]">
                   {[
-                    { id: 'auto', label: '🔌 Web3 Extension' },
-                    { id: 'outsidesync', label: '📱 Outer / QR Sync' },
+                    { id: 'auto', label: '🔌 Web3 Check' },
                     { id: 'manual', label: '✍️ Custom Key' },
                     { id: 'sandbox', label: '🎲 Sandbox ID' },
                   ].map(method => (
@@ -599,7 +517,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                         setConnectMethod(method.id as any);
                         setManualAddressError('');
                       }}
-                      className="py-2 rounded-lg text-[9.5px] font-bold font-sans cursor-pointer transition-all border-none focus:outline-none"
+                      className="py-2.5 rounded-lg text-[10px] font-bold font-sans cursor-pointer transition-all border-none focus:outline-none"
                       style={{
                         backgroundColor: connectMethod === method.id ? 'rgba(167, 139, 250, 0.12)' : 'transparent',
                         color: connectMethod === method.id ? '#c084fc' : 'rgba(248, 250, 252, 0.45)',
@@ -698,122 +616,6 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                 </div>
               )}
 
-              {connectMethod === 'outsidesync' && (
-                <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/15 space-y-4 animate-fade-in text-xs text-slate-300 text-left">
-                  <div className="font-bold flex items-center gap-1.5 text-purple-300">
-                    <span>📱</span> External Wallet Signer Link
-                  </div>
-                  <p className="text-[10px] text-slate-400 leading-relaxed font-sans">
-                    This allows you to sign the authorization request using your mobile wallet's browser directly.
-                  </p>
-
-                  {syncStatus === 'idle' && (
-                    <button
-                      type="button"
-                      onClick={generateSyncSession}
-                      className="w-full py-2.5 rounded-lg border border-[#a78bfa]/40 hover:border-[#a78bfa]/60 bg-[#a78bfa]/10 transition-all font-sans text-[11px] font-bold text-[#c084fc] cursor-pointer"
-                    >
-                      🔗 Setup Handshake Session Bridge
-                    </button>
-                  )}
-
-                  {syncStatus === 'generating' && (
-                    <div className="text-center py-3 text-[10px] text-slate-500 font-mono flex items-center justify-center gap-2">
-                      <div className="h-3 w-3 border border-purple-500/20 border-t-purple-400 rounded-full animate-spin" />
-                      Creating synchronization node...
-                    </div>
-                  )}
-
-                  {syncStatus === 'waiting' && syncUrl && (
-                    <div className="space-y-4">
-                      <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white bg-opacity-95 max-w-[170px] mx-auto border border-purple-300/20">
-                        <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(syncUrl)}`}
-                          alt="Verification Session QR Code"
-                          className="w-[130px] h-[130px]"
-                          referrerPolicy="no-referrer"
-                        />
-                        <span className="text-[7.5px] font-mono text-slate-500 uppercase tracking-widest mt-1.5 font-bold">
-                          Scan to connect
-                        </span>
-                      </div>
-
-                      <div className="p-3 bg-purple-950/40 border border-purple-500/15 rounded-lg space-y-1.5 animate-pulse">
-                        <div className="text-[10px] text-purple-300 font-bold flex items-center gap-1.5">
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-                          </span>
-                          Waiting for Mobile Signature...
-                        </div>
-                        <p className="text-[9px] text-slate-400 leading-relaxed font-sans">
-                          1. Open your camera on Safari or Android browser and scan the QR code.<br/>
-                          2. Handshake with your mobile wallet app (MetaMask, Trust, Rainbow).<br/>
-                          3. Approve the cryptographic signature challenge to finish. This window will sync instantly!
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(syncUrl);
-                            alert('Outpost sync link copied to clipboard!');
-                          }}
-                          className="flex-1 py-2 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[10px] font-mono text-slate-300 transition-colors cursor-pointer"
-                        >
-                          📋 Copy Link
-                        </button>
-                        <a
-                          href={syncUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 py-2 px-3 rounded-lg bg-purple-500/10 hover:bg-purple-500/15 border border-purple-500/20 flex items-center justify-center gap-1 text-[10px] font-bold text-[#c084fc] transition-colors"
-                        >
-                          📱 Sign Here ↗
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {syncStatus === 'success' && (
-                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[#14F195] font-bold text-center text-[11px]">
-                      ✨ Signature Authenticated Successfully! Redirecting...
-                    </div>
-                  )}
-
-                  {syncStatus === 'expired' && (
-                    <div className="space-y-2">
-                      <div className="text-amber-400 text-[10px] text-center font-bold">
-                        ⚠️ Session Expired
-                      </div>
-                      <button
-                        type="button"
-                        onClick={generateSyncSession}
-                        className="w-full py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-[10px] font-bold text-slate-300 cursor-pointer"
-                      >
-                        Generate New Code
-                      </button>
-                    </div>
-                  )}
-
-                  {syncStatus === 'error' && (
-                    <div className="space-y-2">
-                      <p className="text-rose-400 text-[10px] leading-relaxed">
-                        {syncError || 'A synchronizer setup handshake failed.'}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={generateSyncSession}
-                        className="w-full py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-[10px] font-bold text-slate-300 cursor-pointer"
-                      >
-                        Retry Handshake
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Privacy Setting Toggle */}
               <div className="p-4 rounded-xl bg-white/[0.015] border border-white/[0.05] flex items-center justify-between gap-4">
                 <div>
@@ -838,22 +640,16 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
               </div>
 
               {/* Action trigger button */}
-              {connectMethod !== 'outsidesync' ? (
-                <button
-                  onClick={handleConfirm}
-                  className="w-full py-4 rounded-xl border-none text-white font-extrabold text-sm transition-all cursor-pointer hover:opacity-90"
-                  style={{
-                    background: 'linear-gradient(135deg, #a78bfa, #818cf8)',
-                    fontFamily: "'Syne', sans-serif"
-                  }}
-                >
-                  Compile My Karma Score
-                </button>
-              ) : (
-                <div className="text-[10px] text-center text-slate-400 font-mono py-2 px-3 bg-purple-500/5 border border-purple-500/10 rounded-xl leading-relaxed">
-                  🛡️ Use the QR Code or Link above to connect and sign. Your workstation will automatically import credentials when verified.
-                </div>
-              )}
+              <button
+                onClick={handleConfirm}
+                className="w-full py-4 rounded-xl border-none text-white font-extrabold text-sm transition-all cursor-pointer hover:opacity-90"
+                style={{
+                  background: 'linear-gradient(135deg, #a78bfa, #818cf8)',
+                  fontFamily: "'Syne', sans-serif"
+                }}
+              >
+                Compile My Karma Score
+              </button>
             </div>
           )}
 

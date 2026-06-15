@@ -5,7 +5,6 @@ import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
 import AIReading from './components/AIReading';
 import Lenders from './components/Lenders';
-import SyncOutpost from './components/SyncOutpost';
 import { WalletModal, DisconnectModal, EditProfileModal } from './components/ProfileModal';
 import { generateUserProfile } from './utils/generator';
 import { Twitter, Github, Send, Smartphone } from 'lucide-react';
@@ -160,20 +159,6 @@ function Nav({ page, setPage, user, onShowConnect, onShowDisconnect, onShowEdit,
 export default function App() {
   const [page, setPage] = useState<string>('Home');
   const [user, setUser] = useState<User | null>(null);
-  const [syncSessionId, setSyncSessionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const session = urlParams.get('session');
-      if (session) {
-        setSyncSessionId(session);
-        setPage('SyncOutpost');
-      }
-    } catch (err) {
-      console.warn('URL parsing failed:', err);
-    }
-  }, []);
 
   const [showConnect, setShowConnect] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
@@ -308,19 +293,10 @@ export default function App() {
 
   // Redirect guard: protect dashboards
   useEffect(() => {
-    if (page === 'SyncOutpost') return; // Bypass redirect guard for sync outpost
     if (!user && ['Dashboard', 'Lenders', 'AI Reading'].includes(page)) {
       setPage('Home');
     }
   }, [user, page]);
-
-  if (page === 'SyncOutpost' && syncSessionId) {
-    return (
-      <div className="min-h-screen bg-[#04040a] text-slate-100 flex flex-col font-sans selection:bg-purple-500/30 selection:text-white">
-        <SyncOutpost sessionId={syncSessionId} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#04040a] text-slate-100 flex flex-col font-sans selection:bg-purple-500/30 selection:text-white">

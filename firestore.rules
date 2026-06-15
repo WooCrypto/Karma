@@ -38,7 +38,7 @@ service cloud.firestore {
         incoming().username is string && 
         incoming().username.size() >= 3 && 
         incoming().username.size() <= 20 &&
-        incoming().karmaScore is number &&
+        incoming().karmaScore is int &&
         incoming().karmaScore >= 0 &&
         incoming().karmaScore <= 1000
       );
@@ -48,7 +48,7 @@ service cloud.firestore {
         incoming().username is string &&
         incoming().username.size() >= 3 &&
         incoming().username.size() <= 20 &&
-        incoming().karmaScore is number &&
+        incoming().karmaScore is int &&
         incoming().karmaScore >= 0 &&
         incoming().karmaScore <= 1000
       );
@@ -67,23 +67,6 @@ service cloud.firestore {
         incoming().challenge.size() <= 128
       );
       allow delete: if true; // Server/client can clear stale challenges after use
-    }
-
-    // --- POLICY GATE: SYNC SESSIONS ---
-    match /sync_sessions/{id} {
-      allow get: if true; // Both desktop client and outpost link need to lookup status
-      allow create: if (
-        incoming().id == id &&
-        incoming().status == 'pending' &&
-        incoming().challenge is string &&
-        incoming().createdAt is number
-      );
-      allow update: if (
-        existing().status == 'pending' &&
-        (incoming().status == 'signed' || incoming().status == 'error') &&
-        incoming().createdAt == existing().createdAt
-      );
-      allow delete: if true; // Allowed to clean up expired/finished sessions
     }
   }
 }
