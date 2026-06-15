@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { User } from '../types';
 import NavigationVideo from './NavigationVideo';
 import { getAura, PERSONALITIES, truncateWallet } from '../constants';
@@ -444,42 +444,19 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser, onNavigate
                         <span className="text-xs font-mono font-normal text-slate-500">/ 1000 PTS</span>
                       </h2>
                     </div>
-                    <div className="text-right min-h-[29px] flex items-center justify-end">
-                      <AnimatePresence mode="popLayout" initial={false}>
-                        <motion.span 
-                          key={aura.name}
-                          initial={{ opacity: 0, scale: 0.85, y: -6, filter: 'blur(3px)' }}
-                          animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                          exit={{ opacity: 0, scale: 0.85, y: 6, filter: 'blur(3px)' }}
-                          transition={{ 
-                            type: 'spring', 
-                            stiffness: 400, 
-                            damping: 24,
-                            mass: 0.8
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider border select-none h-[22px]"
-                          style={{ 
-                            backgroundColor: `${aura.color}15`, 
-                            color: aura.color,
-                            borderColor: `${aura.color}25`,
-                          }}
-                        >
-                          <motion.span 
-                            animate={{ 
-                              scale: [1, 1.25, 1],
-                              opacity: [0.6, 1, 0.6]
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              ease: "easeInOut"
-                            }}
-                            className="w-1.5 h-1.5 rounded-full inline-block shrink-0" 
-                            style={{ backgroundColor: aura.color }} 
-                          />
-                          {aura.name}
-                        </motion.span>
-                      </AnimatePresence>
+                    <div className="text-right">
+                      <span 
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider transition-all duration-300"
+                        style={{ 
+                          backgroundColor: `${aura.color}15`, 
+                          color: aura.color,
+                          borderColor: `${aura.color}25`,
+                          borderWidth: '1px'
+                        }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: aura.color }} />
+                        {aura.name}
+                      </span>
                     </div>
                   </div>
 
@@ -861,37 +838,9 @@ export default function Dashboard({ user, onDisconnect, onUpdateUser, onNavigate
                 <div className="text-[9px] font-mono tracking-widest text-slate-400 uppercase mb-4">Reputation Quotient</div>
                 <KarmaRing score={user.karmaScore} aura={aura} size={170} />
                 <div className="mt-6 flex flex-col items-center w-full">
-                  <div className="min-h-[24px] flex items-center justify-center mb-2">
-                    <AnimatePresence mode="popLayout" initial={false}>
-                      <motion.div 
-                        key={aura.name}
-                        initial={{ opacity: 0, scale: 0.85, y: -4, filter: 'blur(3px)' }}
-                        animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, scale: 0.85, y: 4, filter: 'blur(3px)' }}
-                        transition={{ 
-                          type: 'spring', 
-                          stiffness: 400, 
-                          damping: 24,
-                          mass: 0.8
-                        }}
-                        className="flex items-center justify-center gap-2"
-                      >
-                        <motion.span 
-                          animate={{ 
-                            scale: [1, 1.3, 1],
-                            opacity: [0.6, 1, 0.6]
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                          }}
-                          className="w-2 h-2 rounded-full inline-block shrink-0" 
-                          style={{ backgroundColor: aura.color, boxShadow: `0 0 8px ${aura.color}` }} 
-                        />
-                        <span className="text-xs uppercase font-mono tracking-widest select-none" style={{ color: aura.color }}>{aura.name}</span>
-                      </motion.div>
-                    </AnimatePresence>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full inline-block animate-pulse" style={{ backgroundColor: aura.color, boxShadow: `0 0 8px ${aura.color}` }} />
+                    <span className="text-xs uppercase font-mono tracking-widest" style={{ color: aura.color }}>{aura.name}</span>
                   </div>
                   <Tag color={aura.color}>Badge: {aura.badge}</Tag>
 

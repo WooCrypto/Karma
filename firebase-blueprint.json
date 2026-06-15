@@ -41,18 +41,6 @@
         "lastClaimedAt": {
           "type": "string",
           "description": "ISO timestamp for when the last daily airdrop was claimed."
-        },
-        "referralPoints": {
-          "type": "integer",
-          "description": "Accumulated referral aura points subject to decay."
-        },
-        "referralsCount": {
-          "type": "integer",
-          "description": "Total count of users directly referred under this identity."
-        },
-        "referredBy": {
-          "type": "string",
-          "description": "Referrer address/username link used during identity compilation."
         }
       },
       "required": ["address", "username", "karmaScore"]

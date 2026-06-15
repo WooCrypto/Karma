@@ -16,18 +16,6 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
   const [hideWallet, setHideWallet] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [savedProfile, setSavedProfile] = useState<any | null>(null);
-  const [referrer, setReferrer] = useState('');
-
-  // Auto-populate referrer from URL query params (e.g. ?ref=Satoshi)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const ref = params.get('ref');
-      if (ref) {
-        setReferrer(ref.trim());
-      }
-    }
-  }, []);
 
   // Connection options state: auto web3, manual paste, sandbox template
   const [connectMethod, setConnectMethod] = useState<'auto' | 'manual' | 'sandbox'>('auto');
@@ -239,21 +227,9 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
           signature,
           username: trimmed,
           hideWallet,
-          wallet: selectedWallet,
-          referrer: referrer.trim() || undefined
+          wallet: selectedWallet
         })
       });
-      if (!verifyRes.ok) {
-        const errText = await verifyRes.text();
-        let errMsg = 'Failed to synchronize reputation passport with the index server.';
-        try {
-          const parsed = JSON.parse(errText);
-          if (parsed && parsed.error) errMsg = parsed.error;
-        } catch (_) {}
-        setStep('setup');
-        setManualAddressError(errMsg);
-        return;
-      }
       const profile = await verifyRes.json();
       if (profile.error) {
         setStep('setup');
@@ -567,29 +543,6 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
                 )}
                 <p className="text-[9px] text-slate-500 font-mono mt-1.5">
                   Lowercase ASCII letters, digests, and underscores only. Length: 3-20 characters.
-                </p>
-              </div>
-
-              {/* Referrer Username Input Container */}
-              <div>
-                <label className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 block">
-                  Referral Handle or Address (Optional)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-[#a78bfa]/60 font-bold text-sm">@</span>
-                  <input
-                    type="text"
-                    value={referrer}
-                    onChange={e => setReferrer(e.target.value)}
-                    placeholder="referrer_username"
-                    className="w-full pl-8 pr-4 py-3.5 rounded-xl border bg-white/[0.03] text-slate-100 text-sm font-medium outline-none transition-all placeholder:text-slate-600 focus:bg-white/[0.05]"
-                    style={{
-                      borderColor: 'rgba(255, 255, 255, 0.08)',
-                    }}
-                  />
-                </div>
-                <p className="text-[9px] text-slate-500 font-mono mt-1.5">
-                  Optionally paste a referral handle or wallet address. They will earn 1,000 Aura points.
                 </p>
               </div>
 

@@ -63,9 +63,6 @@ export interface UserProfile {
   personality: string;
   auraPoints: number;
   lastClaimedAt: string;
-  referralPoints?: number;
-  referralsCount?: number;
-  referredBy?: string;
   activities: any[];
   categories: { label: string; value: number; color: string; icon: string }[];
   scores: {
@@ -161,35 +158,6 @@ export async function getChallenge(address: string): Promise<string | null> {
   }
 }
 
-export interface ChallengeRecord {
-  address: string;
-  challenge: string;
-  createdAt: number;
-}
-
-export async function getChallengeRecord(address: string): Promise<ChallengeRecord | null> {
-  const normalized = address.toLowerCase();
-  const pathStr = `challenges/${normalized}`;
-  try {
-    const docRef = doc(db, 'challenges', normalized);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) return null;
-    const data = snap.data();
-    if (Date.now() - data.createdAt > 5 * 60 * 1000) {
-      await deleteDoc(docRef);
-      return null;
-    }
-    return {
-      address: data.address,
-      challenge: data.challenge,
-      createdAt: data.createdAt
-    };
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, pathStr);
-    return null;
-  }
-}
-
 export async function clearChallenge(address: string): Promise<void> {
   const normalized = address.toLowerCase();
   const pathStr = `challenges/${normalized}`;
@@ -258,33 +226,6 @@ export async function triggerDailyScoreUpdates(): Promise<void> {
       // Tick active holding streak calendar
       profile.streak += 1;
       profile.auraPoints = (profile.auraPoints || 0) + Math.floor(Math.random() * 20) + 10;
-
-      // Handle referral points decay over time (reduce 50 points or 5% of referralPoints, max out)
-      if (profile.referralPoints && profile.referralPoints > 0) {
-        const decayAmount = Math.min(profile.referralPoints, Math.max(50, Math.floor(profile.referralPoints * 0.05)));
-        profile.referralPoints -= decayAmount;
-        // Reduce the aura points by the decayed amount
-        profile.auraPoints = Math.max(0, (profile.auraPoints || 0) - decayAmount);
-
-        if (!profile.activities) {
-          profile.activities = [];
-        }
-        profile.activities.unshift({
-          id: `ref-decay-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-          timestamp: 'Just now',
-          type: 'Aura Decay',
-          txHash: '0x' + crypto.randomBytes(12).toString('hex') + 'dec',
-          amount: `-${decayAmount}`,
-          asset: 'AURA',
-          scoreDelta: 0,
-          patienceImpact: -1,
-          loyaltyImpact: -1,
-          wisdomImpact: -1,
-        });
-        if (profile.activities.length > 20) {
-          profile.activities.pop();
-        }
-      }
       
       // Simulate score shifts
       const shift = Math.floor(Math.random() * 9) - 4; // -4 to +4 rating swing

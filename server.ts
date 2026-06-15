@@ -11,7 +11,6 @@ import { ethers } from 'ethers';
 import { 
   createChallenge, 
   getChallenge, 
-  getChallengeRecord,
   clearChallenge, 
   saveUserProfile, 
   getUserProfile, 
@@ -121,7 +120,7 @@ app.post('/api/auth/challenge', async (req, res) => {
 // ── API Endpoint: Verify Wallet Signature & Sync Profile ──
 app.post('/api/auth/verify', async (req, res) => {
   try {
-    const { address, signature, username, hideWallet, wallet, referrer } = req.body;
+    const { address, signature, username, hideWallet, wallet } = req.body;
     
     if (!address || !username) {
       return res.status(400).json({ error: 'Address and username specifications are mandatory.' });
@@ -136,20 +135,29 @@ app.post('/api/auth/verify', async (req, res) => {
     
     // Standard EVM Verify logic using ethers if not sandbox (or if a signature is supplied)
     if (!isSandboxAddress && signature && signature !== 'sandbox_sig') {
-      const challengeRecord = await getChallengeRecord(address);
-      if (!challengeRecord) {
+      const savedChallenge = await getChallenge(address);
+      if (!savedChallenge) {
         return res.status(400).json({ error: 'Signature session challenge has expired. Request a new login check-in.' });
       }
 
       try {
-        const messageToReconstruct = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${challengeRecord.challenge}`;
+        const messageToReconstruct = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${savedChallenge}`;
         
-        let resolvedAddress = ethers.verifyMessage(messageToReconstruct, signature);
+        // Use ethers to extract signing address
+        let resolvedAddress = '';
+        
+        // Search through the challenge directories
+        const possibleMessage = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${savedChallenge}`;
+        
+        // We will verify against standard messages structure
+        resolvedAddress = ethers.verifyMessage(possibleMessage, signature);
         
         if (resolvedAddress.toLowerCase() !== address.toLowerCase()) {
           // Attempt verification on timestamp-appended structured layouts as fallback
-          const timestamp = challengeRecord.createdAt;
-          const timestampMessage = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${challengeRecord.challenge}\nTimestamp: ${timestamp}`;
+          const rawFiles = fs.readFileSync(path.join(PASSPORTS_DIR, 'auth_challenges.json'), 'utf-8');
+          const directory = JSON.parse(rawFiles || '{}');
+          const timestamp = directory[address.toLowerCase()]?.createdAt || Date.now();
+          const timestampMessage = `Sign this secure message to prove wallet ownership of the KARMA reputation score account.\n\nChallenge Code: ${savedChallenge}\nTimestamp: ${timestamp}`;
           resolvedAddress = ethers.verifyMessage(timestampMessage, signature);
         }
 
@@ -184,49 +192,6 @@ app.post('/api/auth/verify', async (req, res) => {
         walletDesc,
         !!hideWallet
       );
-
-      // Handle referral rewarding if provided
-      if (referrer && typeof referrer === 'string' && referrer.trim()) {
-        const cleanReferrer = referrer.trim();
-        const profileLower = cleanReferrer.toLowerCase();
-        const selfAddrLower = address.toLowerCase();
-        const selfUserLower = username.toLowerCase();
-
-        if (profileLower !== selfAddrLower && profileLower !== selfUserLower) {
-          const allProfiles = await getAllProfiles();
-          const foundReferrer = allProfiles.find(
-            p => p.username.toLowerCase() === profileLower || p.address.toLowerCase() === profileLower
-          );
-
-          if (foundReferrer) {
-            console.log(`[REFERRAL] Valid referral found: @${foundReferrer.username} referred new user @${username}`);
-            foundReferrer.auraPoints = (foundReferrer.auraPoints || 0) + 1000;
-            foundReferrer.referralPoints = (foundReferrer.referralPoints || 0) + 1000;
-            foundReferrer.referralsCount = (foundReferrer.referralsCount || 0) + 1;
-
-            if (!foundReferrer.activities) foundReferrer.activities = [];
-            foundReferrer.activities.unshift({
-              id: `ref-reward-${Date.now()}`,
-              timestamp: 'Just now',
-              type: 'Referral Reward',
-              txHash: '0x' + crypto.randomBytes(12).toString('hex') + 'ref',
-              amount: '+1000',
-              asset: 'AURA',
-              scoreDelta: 0,
-              patienceImpact: 15,
-              loyaltyImpact: 20,
-              wisdomImpact: 10,
-            });
-            if (foundReferrer.activities.length > 20) foundReferrer.activities.pop();
-
-            await saveUserProfile(foundReferrer);
-
-            // Save relationship reference inside current profile
-            profile.referredBy = foundReferrer.username;
-          }
-        }
-      }
-
       await saveUserProfile(profile);
     } else {
       // Returning profile updates settings if edited

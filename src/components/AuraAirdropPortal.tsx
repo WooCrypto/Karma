@@ -42,7 +42,6 @@ export default function AuraAirdropPortal({ user, onUpdateUser }: AuraAirdropPor
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimProgress, setClaimProgress] = useState(0);
   const [claimSuccess, setClaimSuccess] = useState(false);
-  const [copiedRef, setCopiedRef] = useState(false);
   
   // On-Chain Clash Arena State
   const [showClashArena, setShowClashArena] = useState(false);
@@ -427,73 +426,6 @@ export default function AuraAirdropPortal({ user, onUpdateUser }: AuraAirdropPor
               </>
             )}
           </button>
-        </div>
-      </GlassCard>
-
-      {/* ── Referral System & Aura Boosters ── */}
-      <GlassCard className="p-6 border-[#14F195]/15 relative overflow-hidden bg-[#07070e]/85">
-        <div className="absolute top-0 right-0 w-36 h-36 bg-[#14F195]/5 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b border-white/[0.04] pb-4">
-          <div>
-            <span className="text-[9px] uppercase font-mono tracking-widest text-[#14F195] bg-[#14F195]/10 px-2.5 py-0.5 rounded font-black items-center gap-1 inline-flex select-none">
-              <Share2 size={10} className="text-[#14F195]" /> Sovereign Referrals
-            </span>
-            <h3 className="text-bolder text-lg font-black text-white mt-1.5 font-sans" style={{ fontFamily: "'Syne', sans-serif" }}>
-              Provable Network Spread
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-xl font-sans">
-              Decentralized growth coordinates. Secure 1,000 $AURA points for every valid passport referral. Referral multipliers decay gracefully at 5% daily to ensure holding fidelity.
-            </p>
-          </div>
-
-          <div className="flex gap-4 self-stretch md:self-auto shrink-0 font-mono text-left">
-            <div className="px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wider block font-bold">Referrals Secured</span>
-              <span className="text-xl font-bold font-sans text-white">{user.referralsCount || 0}</span>
-            </div>
-            <div className="px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wider block font-bold">Active Ref Points</span>
-              <span className="text-xl font-bold font-sans text-[#14F195]">+{user.referralPoints || 0} $AURA</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Tray */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3.5 mt-4">
-          <div className="flex-1">
-            <label className="text-[9px] font-mono text-slate-500 uppercase font-bold block tracking-wider mb-1.5">
-              Personal Referral Invite URL
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                readOnly
-                value={typeof window !== 'undefined' ? `${window.location.origin}/?ref=${user.username}` : `https://karmascore.xyz/?ref=${user.username}`}
-                className="w-full bg-slate-950 border border-white/[0.06] rounded-xl pl-3.5 pr-20 py-2.5 text-xs font-mono text-[#14F195] outline-none truncate block font-bold focus:border-[#14F195]/45"
-              />
-              <button
-                onClick={() => {
-                  const url = typeof window !== 'undefined' ? `${window.location.origin}/?ref=${user.username}` : `https://karmascore.xyz/?ref=${user.username}`;
-                  navigator.clipboard.writeText(url);
-                  setCopiedRef(true);
-                  setTimeout(() => setCopiedRef(false), 2000);
-                }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-3 py-1.5 rounded-lg font-bold select-none cursor-pointer border border-[#14F195]/20 bg-[#14F195]/10 text-[#14F195] hover:bg-[#14F195]/20 active:scale-95 transition-all outline-none"
-              >
-                {copiedRef ? 'Copied' : 'Copy link'}
-              </button>
-            </div>
-          </div>
-
-          <div className="shrink-0 flex items-end">
-            <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl flex items-start gap-2.5 text-[10.5px] leading-normal text-amber-500/90 font-mono w-full md:max-w-xs">
-              <span className="text-base select-none">📈</span>
-              <span>
-                <strong>Points decay logic:</strong> Referral boosts decrease daily by <strong>50 points</strong> or <strong>5%</strong> (whichever is greater), maintaining ecosystem supply balance.
-              </span>
-            </div>
-          </div>
         </div>
       </GlassCard>
 
