@@ -227,11 +227,19 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
       });
       if (!verifyRes.ok) {
         const errText = await verifyRes.text();
-        let errMsg = 'Failed to synchronize reputation passport with the index server.';
+        let errMsg = `Failed to synchronize reputation passport [HTTP ${verifyRes.status}]`;
         try {
           const parsed = JSON.parse(errText);
-          if (parsed && parsed.error) errMsg = parsed.error;
-        } catch (_) {}
+          if (parsed && parsed.error) {
+            errMsg = parsed.error;
+          } else {
+            errMsg = `Server error [HTTP ${verifyRes.status}]: ${errText.slice(0, 80)}`;
+          }
+        } catch (_) {
+          if (errText) {
+            errMsg = `Server error [HTTP ${verifyRes.status}]: ${errText.slice(0, 90)}`;
+          }
+        }
         setStep('setup');
         setManualAddressError(errMsg);
         return;
@@ -257,7 +265,7 @@ export function WalletModal({ onConnect, onClose }: ConnectModalProps) {
       }, 4200);
     } catch (err: any) {
       setStep('setup');
-      setManualAddressError(err?.message || 'Failed to synchronize reputation passport with the index server.');
+      setManualAddressError(`Connection block: ${err?.message || 'Failed to synchronize reputation passport with the index server.'}`);
     }
   }
 

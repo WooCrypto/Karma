@@ -344,6 +344,9 @@ export async function getUserProfile(address: string): Promise<UserProfile | nul
   // Try Local Disk second
   const localProf = getProfileLocal(normalized);
   if (localProf) {
+    if (!localProf.address) {
+      localProf.address = normalized;
+    }
     console.log(`[DB] Local Disk Backup HIT for wallet address: ${normalized}`);
     setCachedScore(normalized, localProf);
   }
@@ -353,6 +356,9 @@ export async function getUserProfile(address: string): Promise<UserProfile | nul
     const snap = await withTimeout(getDoc(doc(db, 'profiles', normalized)), 3000);
     if (snap.exists()) {
       const dbProfile = snap.data() as UserProfile;
+      if (!dbProfile.address) {
+        dbProfile.address = normalized;
+      }
       saveProfileLocal(normalized, dbProfile);
       setCachedScore(normalized, dbProfile);
       return dbProfile;
@@ -366,7 +372,11 @@ export async function getUserProfile(address: string): Promise<UserProfile | nul
 
 export async function getAllProfiles(): Promise<UserProfile[]> {
   const localList = getAllProfilesLocal();
-  const indexMap = new Map<string, UserProfile>(localList.map(p => [p.address.toLowerCase(), p]));
+  const indexMap = new Map<string, UserProfile>(
+    localList
+      .filter(p => p && p.address)
+      .map(p => [p.address.toLowerCase(), p])
+  );
 
   try {
     const snap = await withTimeout(getDocs(collection(db, 'profiles')), 4000);

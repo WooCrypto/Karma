@@ -195,7 +195,7 @@ app.post('/api/auth/verify', async (req, res) => {
         if (profileLower !== selfAddrLower && profileLower !== selfUserLower) {
           const allProfiles = await getAllProfiles();
           const foundReferrer = allProfiles.find(
-            p => p.username.toLowerCase() === profileLower || p.address.toLowerCase() === profileLower
+            p => p && p.username?.toLowerCase() === profileLower || p && p.address?.toLowerCase() === profileLower
           );
 
           if (foundReferrer) {
