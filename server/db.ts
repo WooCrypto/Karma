@@ -1,20 +1,61 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, getDocs, collection } from 'firebase/firestore';
 
-// Load Firebase configuration
-const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-let firebaseConfig: any = {};
-try {
-  firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-} catch (err) {
-  console.error('[DB] Failed to load firebase-applet-config.json:', err);
-}
+// Lazy-initialized Firebase/Firestore references
+let dbInstance: any = null;
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export function getDb() {
+  if (dbInstance) {
+    return dbInstance;
+  }
+
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  let firebaseConfig: any = null;
+
+  try {
+    if (fs.existsSync(configPath)) {
+      firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    }
+  } catch (err) {
+    console.warn('[DB] Failed to parse firebase-applet-config.json:', err);
+  }
+
+  if (!firebaseConfig || !firebaseConfig.apiKey) {
+    const envApiKey = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
+    if (envApiKey) {
+      console.log('[DB] Found Firebase API Key in environment variables.');
+      firebaseConfig = {
+        apiKey: envApiKey,
+        projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID,
+        appId: process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID,
+        authDomain: process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN || `${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com`,
+        firestoreDatabaseId: process.env.FIREBASE_FIRESTORE_DATABASE_ID || process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID,
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        measurementId: process.env.FIREBASE_MEASUREMENT_ID || process.env.VITE_FIREBASE_MEASUREMENT_ID,
+      };
+    }
+  }
+
+  if (!firebaseConfig || !firebaseConfig.apiKey) {
+    console.warn('[DB] Firebase apiKey is missing. Operating strictly with direct local offline backup storage (indestructible fallback mode).');
+    return null;
+  }
+
+  try {
+    const existingApps = getApps();
+    const app = existingApps.length > 0 ? getApp() : initializeApp(firebaseConfig);
+    dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+    console.log('[DB] Successfully initialized Firebase Cloud Firestore client connection!');
+    return dbInstance;
+  } catch (err) {
+    console.error('[DB] Failed to initialize Firebase Firestore SDK:', err);
+    return null;
+  }
+}
 
 export enum OperationType {
   CREATE = 'create',
@@ -227,10 +268,13 @@ export async function createChallenge(address: string): Promise<string> {
   // Immediate Local Cache Commit
   saveChallengeLocal(normalized, record);
 
-  try {
-    await withTimeout(setDoc(doc(db, 'challenges', normalized), record), 2500);
-  } catch (err) {
-    console.warn(`[DB] Cloud Firestore challenge write failed or timed out. Handled via local fallback. Reason:`, err instanceof Error ? err.message : err);
+  const db = getDb();
+  if (db) {
+    try {
+      await withTimeout(setDoc(doc(db, 'challenges', normalized), record), 2500);
+    } catch (err) {
+      console.warn(`[DB] Cloud Firestore challenge write failed or timed out. Handled via local fallback. Reason:`, err instanceof Error ? err.message : err);
+    }
   }
   return challenge;
 }
@@ -245,19 +289,22 @@ export async function getChallenge(address: string): Promise<string | null> {
     }
   }
 
-  try {
-    const docRef = doc(db, 'challenges', normalized);
-    const snap = await withTimeout(getDoc(docRef), 2500);
-    if (snap.exists()) {
-      const data = snap.data();
-      if (Date.now() - data.createdAt > 5 * 60 * 1000) {
-        await deleteDoc(docRef);
-        return null;
+  const db = getDb();
+  if (db) {
+    try {
+      const docRef = doc(db, 'challenges', normalized);
+      const snap = await withTimeout(getDoc(docRef), 2500);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Date.now() - data.createdAt > 5 * 60 * 1000) {
+          await deleteDoc(docRef);
+          return null;
+        }
+        return data.challenge;
       }
-      return data.challenge;
+    } catch (err) {
+      console.warn(`[DB] Cloud Firestore challenge read failed or timed out. Falling back to local copy. Reason:`, err instanceof Error ? err.message : err);
     }
-  } catch (err) {
-    console.warn(`[DB] Cloud Firestore challenge read failed or timed out. Falling back to local copy. Reason:`, err instanceof Error ? err.message : err);
   }
 
   return localChal ? localChal.challenge : null;
@@ -279,22 +326,25 @@ export async function getChallengeRecord(address: string): Promise<ChallengeReco
     }
   }
 
-  try {
-    const docRef = doc(db, 'challenges', normalized);
-    const snap = await withTimeout(getDoc(docRef), 2500);
-    if (snap.exists()) {
-      const data = snap.data();
-      if (Date.now() - data.createdAt > 5 * 60 * 1000) {
-        return null;
+  const db = getDb();
+  if (db) {
+    try {
+      const docRef = doc(db, 'challenges', normalized);
+      const snap = await withTimeout(getDoc(docRef), 2500);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Date.now() - data.createdAt > 5 * 60 * 1000) {
+          return null;
+        }
+        return {
+          address: data.address,
+          challenge: data.challenge,
+          createdAt: data.createdAt
+        };
       }
-      return {
-        address: data.address,
-        challenge: data.challenge,
-        createdAt: data.createdAt
-      };
+    } catch (err) {
+      console.warn(`[DB] Cloud Firestore challenge record read failed or timed out. Falling back to local copy. Reason:`, err instanceof Error ? err.message : err);
     }
-  } catch (err) {
-    console.warn(`[DB] Cloud Firestore challenge record read failed or timed out. Falling back to local copy. Reason:`, err instanceof Error ? err.message : err);
   }
 
   return localChal ? {
@@ -308,10 +358,13 @@ export async function clearChallenge(address: string): Promise<void> {
   const normalized = address.toLowerCase();
   deleteChallengeLocal(normalized);
 
-  try {
-    await withTimeout(deleteDoc(doc(db, 'challenges', normalized)), 2000);
-  } catch (err) {
-    console.warn(`[DB] Cloud Firestore challenge delete failed or timed out. Reason:`, err instanceof Error ? err.message : err);
+  const db = getDb();
+  if (db) {
+    try {
+      await withTimeout(deleteDoc(doc(db, 'challenges', normalized)), 2000);
+    } catch (err) {
+      console.warn(`[DB] Cloud Firestore challenge delete failed or timed out. Reason:`, err instanceof Error ? err.message : err);
+    }
   }
 }
 
@@ -323,11 +376,14 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
   setCachedScore(profile.address, profile);
   saveProfileLocal(normalized, profile);
 
-  try {
-    await withTimeout(setDoc(doc(db, 'profiles', normalized), profile), 3000);
-    console.log(`[DB] Successfully synchronized profile with Cloud Firestore database: ${normalized}`);
-  } catch (err) {
-    console.warn(`[DB] Cloud Firestore write failed or timed out. Data safely persisted and retrieved locally. Reason:`, err instanceof Error ? err.message : err);
+  const db = getDb();
+  if (db) {
+    try {
+      await withTimeout(setDoc(doc(db, 'profiles', normalized), profile), 3000);
+      console.log(`[DB] Successfully synchronized profile with Cloud Firestore database: ${normalized}`);
+    } catch (err) {
+      console.warn(`[DB] Cloud Firestore write failed or timed out. Data safely persisted and retrieved locally. Reason:`, err instanceof Error ? err.message : err);
+    }
   }
 }
 
@@ -351,20 +407,23 @@ export async function getUserProfile(address: string): Promise<UserProfile | nul
     setCachedScore(normalized, localProf);
   }
 
-  try {
-    console.log(`[DB] Querying Cloud Firestore database record for: ${normalized}`);
-    const snap = await withTimeout(getDoc(doc(db, 'profiles', normalized)), 3000);
-    if (snap.exists()) {
-      const dbProfile = snap.data() as UserProfile;
-      if (!dbProfile.address) {
-        dbProfile.address = normalized;
+  const db = getDb();
+  if (db) {
+    try {
+      console.log(`[DB] Querying Cloud Firestore database record for: ${normalized}`);
+      const snap = await withTimeout(getDoc(doc(db, 'profiles', normalized)), 3000);
+      if (snap.exists()) {
+        const dbProfile = snap.data() as UserProfile;
+        if (!dbProfile.address) {
+          dbProfile.address = normalized;
+        }
+        saveProfileLocal(normalized, dbProfile);
+        setCachedScore(normalized, dbProfile);
+        return dbProfile;
       }
-      saveProfileLocal(normalized, dbProfile);
-      setCachedScore(normalized, dbProfile);
-      return dbProfile;
+    } catch (err) {
+      console.warn(`[DB] Cloud Firestore read failed or timed out. Falling back to local profile registry. Reason:`, err instanceof Error ? err.message : err);
     }
-  } catch (err) {
-    console.warn(`[DB] Cloud Firestore read failed or timed out. Falling back to local profile registry. Reason:`, err instanceof Error ? err.message : err);
   }
 
   return localProf;
@@ -378,21 +437,24 @@ export async function getAllProfiles(): Promise<UserProfile[]> {
       .map(p => [p.address.toLowerCase(), p])
   );
 
-  try {
-    const snap = await withTimeout(getDocs(collection(db, 'profiles')), 4000);
-    snap.forEach((doc) => {
-      const profile = doc.data() as UserProfile;
-      if (!profile || !profile.address) {
-        console.warn(`[DB] Skipping malformed profile doc ${doc.id}`);
-        return;
-      }
-      const normalized = profile.address.toLowerCase();
-      indexMap.set(normalized, profile);
-      saveProfileLocal(normalized, profile);
-      setCachedScore(normalized, profile);
-    });
-  } catch (err) {
-    console.warn(`[DB] Cloud Firestore list profiles failed or timed out. Displaying local registry index. Reason:`, err instanceof Error ? err.message : err);
+  const db = getDb();
+  if (db) {
+    try {
+      const snap = await withTimeout(getDocs(collection(db, 'profiles')), 4000);
+      snap.forEach((doc) => {
+        const profile = doc.data() as UserProfile;
+        if (!profile || !profile.address) {
+          console.warn(`[DB] Skipping malformed profile doc ${doc.id}`);
+          return;
+        }
+        const normalized = profile.address.toLowerCase();
+        indexMap.set(normalized, profile);
+        saveProfileLocal(normalized, profile);
+        setCachedScore(normalized, profile);
+      });
+    } catch (err) {
+      console.warn(`[DB] Cloud Firestore list profiles failed or timed out. Displaying local registry index. Reason:`, err instanceof Error ? err.message : err);
+    }
   }
 
   return Array.from(indexMap.values());
